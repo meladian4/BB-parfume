@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatIDR } from '@/lib/formatters';
@@ -14,7 +14,75 @@ import {
   CheckCircle2,
   BarChart3,
   Boxes,
+  Calendar,
+  Filter,
+  X,
 } from 'lucide-react';
+
+type DatePreset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM';
+
+const PRESET_OPTIONS: { id: DatePreset; label: string }[] = [
+  { id: 'TODAY', label: 'Hari Ini' },
+  { id: 'YESTERDAY', label: 'Kemarin' },
+  { id: 'LAST_7', label: '7 Hari Terakhir' },
+  { id: 'THIS_MONTH', label: 'Bulan Ini' },
+  { id: 'LAST_MONTH', label: 'Bulan Lalu' },
+  { id: 'THIS_YEAR', label: 'Tahun Ini' },
+  { id: 'ALL', label: 'Semua Waktu' },
+  { id: 'CUSTOM', label: 'Pilih Tanggal' },
+];
+
+const formatDateLocal = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayStr = () => formatDateLocal(new Date());
+
+const getYesterdayStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return formatDateLocal(d);
+};
+
+const getLast7DaysStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  return formatDateLocal(d);
+};
+
+const getMonthStartStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
+const getLastMonthRangeStr = () => {
+  const d = new Date();
+  const firstDay = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+  const lastDay = new Date(d.getFullYear(), d.getMonth(), 0);
+  return {
+    start: formatDateLocal(firstDay),
+    end: formatDateLocal(lastDay),
+  };
+};
+
+const getYearStartStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-01-01`;
+};
+
+const formatDisplayDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  try {
+    const [y, m, d] = dateStr.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    return `${parseInt(d, 10)} ${months[parseInt(m, 10) - 1]} ${y}`;
+  } catch {
+    return dateStr;
+  }
+};
 
 export default function SuperAdminReportsPage() {
   const [stores, setStores] = useState<Store[]>([]);
@@ -24,8 +92,68 @@ export default function SuperAdminReportsPage() {
 
   // Filters
   const [selectedStore, setSelectedStore] = useState<string>('');
+  const [datePreset, setDatePreset] = useState<DatePreset>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  const handleSelectPreset = (preset: DatePreset) => {
+    setDatePreset(preset);
+    const today = getTodayStr();
+
+    switch (preset) {
+      case 'TODAY':
+        setStartDate(today);
+        setEndDate(today);
+        break;
+      case 'YESTERDAY': {
+        const yest = getYesterdayStr();
+        setStartDate(yest);
+        setEndDate(yest);
+        break;
+      }
+      case 'LAST_7':
+        setStartDate(getLast7DaysStr());
+        setEndDate(today);
+        break;
+      case 'THIS_MONTH':
+        setStartDate(getMonthStartStr());
+        setEndDate(today);
+        break;
+      case 'LAST_MONTH': {
+        const { start, end } = getLastMonthRangeStr();
+        setStartDate(start);
+        setEndDate(end);
+        break;
+      }
+      case 'THIS_YEAR':
+        setStartDate(getYearStartStr());
+        setEndDate(today);
+        break;
+      case 'ALL':
+        setStartDate('');
+        setEndDate('');
+        break;
+      case 'CUSTOM':
+        if (!startDate && !endDate) {
+          setStartDate(getMonthStartStr());
+          setEndDate(today);
+        }
+        break;
+    }
+  };
+
+  const activePeriodLabel = useMemo(() => {
+    if (!startDate && !endDate) return 'Semua Waktu (Sepanjang Masa)';
+    if (startDate && endDate) {
+      if (startDate === endDate) {
+        return `${formatDisplayDate(startDate)} (${datePreset === 'TODAY' ? 'Hari Ini' : datePreset === 'YESTERDAY' ? 'Kemarin' : '1 Hari'})`;
+      }
+      return `${formatDisplayDate(startDate)} — ${formatDisplayDate(endDate)}`;
+    }
+    if (startDate) return `Sejak ${formatDisplayDate(startDate)}`;
+    if (endDate) return `Hingga ${formatDisplayDate(endDate)}`;
+    return 'Semua Waktu';
+  }, [startDate, endDate, datePreset]);
 
   const loadData = async () => {
     try {
@@ -101,14 +229,18 @@ export default function SuperAdminReportsPage() {
       </div>
 
       {/* Filter Bar */}
-      <Card className="bg-[#12151C] border-neutral-800 p-4 shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">Filter Cabang</label>
+      <Card className="bg-[#12151C] border-neutral-800 p-4 shadow-lg space-y-4">
+        {/* Row 1: Filter Cabang & Current Active Date Badge */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex-1 max-w-md">
+            <label className="block text-xs font-medium text-neutral-400 mb-1.5 flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-[#D4AF37]" />
+              Filter Cabang Toko
+            </label>
             <select
               value={selectedStore}
               onChange={(e) => setSelectedStore(e.target.value)}
-              className="w-full bg-[#181C24] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-[#D4AF37]"
+              className="w-full bg-[#181C24] border border-neutral-700 rounded-xl px-3 py-2 text-xs md:text-sm text-neutral-100 focus:outline-none focus:border-[#D4AF37]"
             >
               <option value="">Konsolidasi Semua Cabang (Kendal Kota, Pegandon, Kaliwungu)</option>
               {stores.map((st) => (
@@ -119,25 +251,95 @@ export default function SuperAdminReportsPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">Dari Tanggal</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-[#181C24] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-[#D4AF37]"
-            />
+          {/* Active Period Indicator Badge */}
+          <div className="flex items-center gap-2.5 bg-[#181C24] border border-neutral-800 rounded-xl px-3.5 py-2.5 self-start md:self-end">
+            <Calendar className="w-4 h-4 text-[#D4AF37] shrink-0" />
+            <div className="text-xs">
+              <span className="text-neutral-400 block text-[10px] uppercase tracking-wider font-semibold">
+                Periode Laporan Aktif:
+              </span>
+              <span className="font-semibold text-white">
+                {activePeriodLabel}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Rentang Waktu (Presets & Custom Date Picker) */}
+        <div className="pt-3 border-t border-neutral-800/80 flex flex-col space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-semibold text-neutral-400 mr-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                Rentang Waktu:
+              </span>
+              {PRESET_OPTIONS.map((preset) => {
+                const isActive = datePreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleSelectPreset(preset.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-md ring-1 ring-[#D4AF37]'
+                        : 'bg-[#181C24] text-neutral-300 hover:text-white hover:bg-[#222734] border border-neutral-700/70'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quick reset button if any date filter is applied */}
+            {(startDate || endDate || datePreset !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => handleSelectPreset('ALL')}
+                className="text-[11px] text-neutral-400 hover:text-amber-400 flex items-center gap-1 underline self-start sm:self-auto transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Reset ke Semua Waktu
+              </button>
+            )}
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-neutral-400 mb-1.5">Sampai Tanggal</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-[#181C24] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-[#D4AF37]"
-            />
-          </div>
+          {/* Custom Date Pickers (Shown if CUSTOM is active) */}
+          {datePreset === 'CUSTOM' && (
+            <div className="bg-[#181C24] border border-neutral-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <span className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-[#D4AF37]" />
+                Kustom Rentang Tanggal:
+              </span>
+              <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="flex-1 flex items-center gap-2 bg-[#12151C] border border-neutral-700 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] text-neutral-400 shrink-0">Dari Tanggal:</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => {
+                      setStartDate(e.target.value);
+                      setDatePreset('CUSTOM');
+                    }}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div className="flex-1 flex items-center gap-2 bg-[#12151C] border border-neutral-700 rounded-lg px-2.5 py-1.5">
+                  <span className="text-[11px] text-neutral-400 shrink-0">Sampai Tanggal:</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => {
+                      setEndDate(e.target.value);
+                      setDatePreset('CUSTOM');
+                    }}
+                    className="w-full bg-transparent text-xs text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
