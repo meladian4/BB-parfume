@@ -56,6 +56,7 @@ import {
 } from 'lucide-react';
 import {
   printReceiptViaBluetooth,
+  connectBluetoothPrinter,
   isWebBluetoothSupported,
 } from '@/lib/bluetooth-printer';
 
@@ -784,8 +785,35 @@ export default function CashierPOSPage() {
               </button>
             </div>
 
-            {/* Sesi Kasir Status Button & Notifikasi Mutasi */}
+            {/* Sesi Kasir Status Button, Notifikasi Mutasi & Status Printer */}
             <div className="flex items-center gap-2 overflow-x-auto pb-0.5 sm:pb-0">
+              {/* Tombol Cek / Sambungkan Printer Bluetooth */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    setBtPrinting(true);
+                    setBtStatusMsg('Sedang menyambungkan printer...');
+                    const res = await connectBluetoothPrinter();
+                    setBtPrinterName(res.name);
+                    alert(`✓ Printer Thermal Bluetooth "${res.name}" berhasil terhubung dan siap digunakan!`);
+                  } catch (e: any) {
+                    alert(`Info Bluetooth: ${e.message}`);
+                  } finally {
+                    setBtPrinting(false);
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold whitespace-nowrap transition touch-manipulation ${
+                  btPrinterName
+                    ? 'bg-blue-950/60 border-blue-500/50 text-blue-300 shadow-sm shadow-blue-500/20'
+                    : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:text-white'
+                }`}
+                title="Hubungkan Printer Thermal Bluetooth"
+              >
+                <Bluetooth className={`w-3.5 h-3.5 ${btPrinterName ? 'text-blue-400' : 'text-slate-400'}`} />
+                <span>{btPrinterName ? `BT: ${btPrinterName}` : 'Printer BT'}</span>
+              </button>
+
               <a
                 href="/cashier/expenses"
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/80 text-slate-300 hover:text-[#D4AF37] transition text-[11px] font-semibold whitespace-nowrap"

@@ -4,8 +4,9 @@ import React, { useEffect, useState, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { Sale } from '@/types/domain';
 import { formatIDR, formatDateTimeJakarta } from '@/lib/formatters';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Bluetooth } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { printReceiptViaBluetooth } from '@/lib/bluetooth-printer';
 
 function ReceiptPrintContent() {
   const params = useParams();
@@ -42,6 +43,33 @@ function ReceiptPrintContent() {
     }
   }, [id]);
 
+  const [btPrinting, setBtPrinting] = useState(false);
+  const [btPrinterName, setBtPrinterName] = useState<string | null>(null);
+  const [btStatusMsg, setBtStatusMsg] = useState<string | null>(null);
+
+  const handlePrintBluetooth = async () => {
+    if (!sale) return;
+    try {
+      setBtPrinting(true);
+      setBtStatusMsg('Sedang menyambungkan ke printer bluetooth...');
+      const cashierName = sale.cashier?.full_name || 'Kasir';
+      const res = await printReceiptViaBluetooth(
+        sale,
+        sale.store,
+        cashierName,
+        is58mm ? '58mm' : '80mm'
+      );
+      setBtPrinterName(res.printerName);
+      setBtStatusMsg(`✓ Berhasil mencetak ke ${res.printerName}`);
+      setTimeout(() => setBtStatusMsg(null), 5000);
+    } catch (err: any) {
+      console.error('Bluetooth Print Error:', err);
+      setBtStatusMsg(`Gagal: ${err.message || 'Printer bluetooth tidak terhubung'}`);
+    } finally {
+      setBtPrinting(false);
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -71,17 +99,50 @@ function ReceiptPrintContent() {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 print:p-0 print:bg-white">
       {/* Screen Controls (Hidden during print) */}
-      <div className="print:hidden w-full max-w-md mb-6 flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/cashier')}>
-          <ArrowLeft className="w-4 h-4 mr-1.5" />
-          Terminal Kasir
-        </Button>
-        <div className="flex gap-2">
-          <Button variant="gold" size="sm" onClick={handlePrint}>
-            <Printer className="w-4 h-4 mr-1.5" />
-            Cetak Struk ({paperSize})
+      <div className="print:hidden w-full max-w-md mb-6 space-y-2">
+        <div className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/cashier')}>
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Terminal Kasir
           </Button>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handlePrintBluetooth}
+              disabled={btPrinting}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold"
+            >
+              <Bluetooth className={`w-4 h-4 mr-1.5 ${btPrinting ? 'animate-spin' : ''}`} />
+              <span>{btPrinting ? 'Mencetak...' : 'Cetak Bluetooth'}</span>
+            </Button>
+
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="w-4 h-4 mr-1.5" />
+              Browser
+            </Button>
+          </div>
         </div>
+
+        {btStatusMsg && (
+          <div
+            className={`p-2.5 rounded-lg text-xs flex items-center justify-between border ${
+              btStatusMsg.startsWith('✓')
+                ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300'
+                : 'bg-rose-950/70 border-rose-500/40 text-rose-300'
+            }`}
+          >
+            <span>{btStatusMsg}</span>
+            <button
+              type="button"
+              onClick={() => setBtStatusMsg(null)}
+              className="text-xs opacity-60 hover:opacity-100"
+            >
+              &times;
+            </button>
+          </div>
+        )}
       </div>
 
       {/* THERMAL RECEIPT SLIP */}

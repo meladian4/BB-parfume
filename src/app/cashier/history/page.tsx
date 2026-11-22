@@ -30,7 +30,9 @@ import {
   Wallet,
   Clock,
   Filter,
+  Bluetooth,
 } from 'lucide-react';
+import { printReceiptViaBluetooth } from '@/lib/bluetooth-printer';
 
 type DatePreset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'THIS_MONTH' | 'CUSTOM';
 
@@ -71,6 +73,42 @@ export default function CashierHistoryPage() {
   const [saleToReview, setSaleToReview] = useState<Sale | null>(null);
   const [adminDecisionNotes, setAdminDecisionNotes] = useState<string>('');
   const [submittingAdminDecision, setSubmittingAdminDecision] = useState(false);
+
+  // Modal Cetak Struk Thermal & Bluetooth
+  const [receiptSaleToPrint, setReceiptSaleToPrint] = useState<Sale | null>(null);
+  const [receiptPaperSize, setReceiptPaperSize] = useState<'58mm' | '80mm'>('58mm');
+  const [btPrinting, setBtPrinting] = useState(false);
+  const [btPrinterName, setBtPrinterName] = useState<string | null>(null);
+  const [btStatusMsg, setBtStatusMsg] = useState<string | null>(null);
+
+  const handlePrintBluetooth = async () => {
+    if (!receiptSaleToPrint) return;
+    try {
+      setBtPrinting(true);
+      setBtStatusMsg('Sedang menyambungkan ke printer bluetooth...');
+      const cashierName = receiptSaleToPrint.cashier?.full_name || user?.full_name || 'Kasir';
+      const storeObj =
+        receiptSaleToPrint.store ||
+        stores.find((s) => s.id === receiptSaleToPrint.store_id) ||
+        user?.assigned_store ||
+        null;
+
+      const res = await printReceiptViaBluetooth(
+        receiptSaleToPrint,
+        storeObj,
+        cashierName,
+        receiptPaperSize
+      );
+      setBtPrinterName(res.printerName);
+      setBtStatusMsg(`✓ Berhasil mencetak ke ${res.printerName}`);
+      setTimeout(() => setBtStatusMsg(null), 5000);
+    } catch (err: any) {
+      console.error('Bluetooth Print Error:', err);
+      setBtStatusMsg(`Gagal: ${err.message || 'Printer bluetooth tidak terhubung'}`);
+    } finally {
+      setBtPrinting(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -704,9 +742,9 @@ export default function CashierHistoryPage() {
                             <Button
                               variant="secondary"
                               size="sm"
-                              onClick={() => window.open(`/cashier/receipt/${s.id}?size=58mm`, '_blank')}
+                              onClick={() => setReceiptSaleToPrint(s)}
                               className="h-7 px-2 text-xs text-[#D4AF37] hover:text-[#E5C365]"
-                              title="Cetak Struk Thermal"
+                              title="Cetak Struk Thermal & Bluetooth"
                             >
                               <Printer className="w-3.5 h-3.5 mr-1" />
                               Struk
@@ -889,11 +927,11 @@ export default function CashierHistoryPage() {
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 variant="gold"
-                onClick={() => window.open(`/cashier/receipt/${selectedSale.id}?size=58mm`, '_blank')}
+                onClick={() => setReceiptSaleToPrint(selectedSale)}
                 className="flex items-center gap-1.5"
               >
                 <Printer className="w-4 h-4" />
-                Cetak Struk Thermal
+                Cetak Struk Thermal / Bluetooth
               </Button>
               <Button variant="ghost" onClick={() => setSelectedSale(null)}>
                 Tutup
@@ -1074,6 +1112,217 @@ export default function CashierHistoryPage() {
                 >
                   {submittingAdminDecision ? 'Memproses...' : 'Setujui & Rollback Stok/Kas'}
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL 4: CETAK STRUK THERMAL & BLUETOOTH */}
+      <Modal
+        isOpen={!!receiptSaleToPrint}
+        onClose={() => setReceiptSaleToPrint(null)}
+        title="Cetak Ulang Struk Thermal (Reprint)"
+      >
+        {receiptSaleToPrint && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between bg-slate-900 p-2 rounded-xl border border-slate-800">
+              <span className="text-xs text-slate-400">Ukuran Printer Thermal:</span>
+              <div className="flex gap-1">
+                {(['58mm', '80mm'] as const).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setReceiptPaperSize(size)}
+                    className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${
+                      receiptPaperSize === size
+                        ? 'bg-[#D4AF37] text-black font-bold'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* RECEIPT PAPER CONTAINER */}
+            <div className="flex justify-center bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto">
+              <div
+                id="thermal-receipt"
+                style={{ width: receiptPaperSize === '58mm' ? '280px' : '380px' }}
+                className="bg-white text-black p-4 rounded shadow-2xl font-mono text-[11px] leading-tight select-none"
+              >
+                {/* Header Struk */}
+                <div className="text-center pb-2 border-b border-dashed border-gray-400">
+                  <div className="flex justify-center mb-1">
+                    <img src="/logo-black.png" alt="BB Parfum" className="w-9 h-9 object-contain" />
+                  </div>
+                  <p className="font-bold text-sm tracking-wider">BB PARFUM PREMIUM</p>
+                  <p className="text-[10px] text-gray-700">
+                    {receiptSaleToPrint.store?.name || user?.assigned_store?.name || 'Cabang Kendal'}
+                  </p>
+                  <p className="text-[9px] text-gray-600">
+                    {receiptSaleToPrint.store?.address || user?.assigned_store?.address || 'Kendal, Jawa Tengah'}
+                  </p>
+                  <p className="text-[9px] text-gray-600">
+                    Telp: {receiptSaleToPrint.store?.phone || user?.assigned_store?.phone || '-'}
+                  </p>
+                </div>
+
+                {/* Meta Struk */}
+                <div className="py-2 border-b border-dashed border-gray-400 space-y-0.5 text-[10px]">
+                  <div className="flex justify-between">
+                    <span>No: {receiptSaleToPrint.invoice_number}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Wkt: {formatDateTimeJakarta(receiptSaleToPrint.created_at)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Kasir: {receiptSaleToPrint.cashier?.full_name || user?.full_name || 'Kasir'}</span>
+                  </div>
+                  {receiptSaleToPrint.member && (
+                    <div className="flex justify-between font-bold text-gray-900 pt-1 border-t border-dotted border-gray-300">
+                      <span>Member: {receiptSaleToPrint.member.name}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Item List */}
+                <div className="py-2 border-b border-dashed border-gray-400 space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-gray-700 pb-1 border-b border-dotted border-gray-300 uppercase tracking-wider">
+                    <span>Ingredients</span>
+                    <span>Takaran</span>
+                  </div>
+                  {receiptSaleToPrint.items?.map((it) => {
+                    const unit = it.product?.unit_name || (it.product?.product_type === 'BIBIT' ? 'ml' : 'pcs');
+                    return (
+                      <div key={it.id} className="flex justify-between text-[10px]">
+                        <span className="font-semibold truncate max-w-[70%]">{it.product?.name}</span>
+                        <span className="text-gray-800 font-medium">
+                          {it.quantity} {unit}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Summary Struk */}
+                <div className="py-2 border-b border-dashed border-gray-400 space-y-0.5 text-[10px]">
+                  {(receiptSaleToPrint.discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-gray-600">
+                      <span>Diskon:</span>
+                      <span>-{formatIDR(receiptSaleToPrint.discount_amount || 0)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-xs pt-0.5">
+                    <span>TOTAL PEMBAYARAN:</span>
+                    <span>{formatIDR(receiptSaleToPrint.final_amount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between pt-0.5">
+                    <span>Bayar ({receiptSaleToPrint.payments?.[0]?.payment_method || 'CASH'}):</span>
+                    <span>
+                      {formatIDR(
+                        receiptSaleToPrint.payments?.[0]?.amount || receiptSaleToPrint.final_amount || 0
+                      )}
+                    </span>
+                  </div>
+                  {receiptSaleToPrint.payments?.[0]?.payment_method === 'CASH' && (
+                    <div className="flex justify-between">
+                      <span>Kembali:</span>
+                      <span>{formatIDR(receiptSaleToPrint.payments?.[0]?.change_amount || 0)}</span>
+                    </div>
+                  )}
+                  {receiptSaleToPrint.points_earned !== undefined && receiptSaleToPrint.points_earned > 0 && (
+                    <div className="flex justify-between font-bold text-emerald-700 pt-1 border-t border-dashed border-gray-300">
+                      <span>Reward Poin Didapat:</span>
+                      <span>+{receiptSaleToPrint.points_earned} Poin</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Struk */}
+                <div className="text-center pt-3 text-[9px] text-gray-600 space-y-0.5">
+                  <p className="font-bold">TERIMA KASIH ATAS KUNJUNGAN ANDA</p>
+                  <p>Barang yang sudah dibeli tidak dapat ditukar</p>
+                  <p>kecuali ada perjanjian retur resmi.</p>
+                  <p className="pt-1 text-[8px] text-gray-400">BB Parfum Management System</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Bluetooth Notification */}
+            {btStatusMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs flex items-center justify-between border ${
+                  btStatusMsg.startsWith('✓')
+                    ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300'
+                    : 'bg-rose-950/70 border-rose-500/40 text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Bluetooth className="w-4 h-4 shrink-0" />
+                  <span className="font-medium">{btStatusMsg}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBtStatusMsg(null)}
+                  className="text-xs opacity-60 hover:opacity-100"
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+
+            {/* Action Buttons for Printing */}
+            <div className="space-y-2.5 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={handlePrintBluetooth}
+                disabled={btPrinting}
+                className="w-full h-12 min-h-[44px] px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 active:scale-[0.98] transition touch-manipulation disabled:opacity-50"
+              >
+                <Bluetooth className={`w-5 h-5 ${btPrinting ? 'animate-spin' : ''}`} />
+                <span>
+                  {btPrinting
+                    ? 'Sedang Mengirim ke Printer Bluetooth...'
+                    : btPrinterName
+                    ? `Cetak Ulang ke ${btPrinterName} (Bluetooth)`
+                    : 'Hubungkan & Cetak Thermal Bluetooth'}
+                </span>
+              </button>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    window.open(`/cashier/receipt/${receiptSaleToPrint.id}?size=${receiptPaperSize}`, '_blank');
+                  }}
+                  className="w-full sm:w-auto text-xs"
+                >
+                  Buka Tab Cetak Baru
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.print()}
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs text-slate-300 border-slate-700 hover:bg-slate-800"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Browser</span>
+                  </Button>
+
+                  <Button
+                    variant="gold"
+                    size="sm"
+                    onClick={() => setReceiptSaleToPrint(null)}
+                    className="flex-1 sm:flex-initial text-xs font-bold"
+                  >
+                    Tutup
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
