@@ -19,47 +19,11 @@ import {
   X,
 } from 'lucide-react';
 
-type FilterMode = 'MANUAL_DMY' | 'CUSTOM_RANGE' | 'ALL';
-
-const MONTHS = [
-  'Januari',
-  'Februari',
-  'Maret',
-  'April',
-  'Mei',
-  'Juni',
-  'Juli',
-  'Agustus',
-  'September',
-  'Oktober',
-  'November',
-  'Desember',
-];
-
-const computeDateRangeFromManual = (day: string, month: string, year: string) => {
-  const y = year || String(new Date().getFullYear());
-  if (month === 'ALL') {
-    return {
-      start: `${y}-01-01`,
-      end: `${y}-12-31`,
-    };
-  }
-  const m = month || String(new Date().getMonth() + 1);
-  const paddedM = String(m).padStart(2, '0');
-
-  if (day === 'ALL') {
-    const lastDay = new Date(Number(y), Number(m), 0).getDate();
-    return {
-      start: `${y}-${paddedM}-01`,
-      end: `${y}-${paddedM}-${String(lastDay).padStart(2, '0')}`,
-    };
-  }
-
-  const paddedD = String(day).padStart(2, '0');
-  return {
-    start: `${y}-${paddedM}-${paddedD}`,
-    end: `${y}-${paddedM}-${paddedD}`,
-  };
+const formatDateLocal = (d: Date) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 const formatDisplayDate = (dateStr: string) => {
@@ -80,67 +44,64 @@ export default function SuperAdminReportsPage() {
 
   // Filters
   const [selectedStore, setSelectedStore] = useState<string>('');
-  const [filterMode, setFilterMode] = useState<FilterMode>('MANUAL_DMY');
 
+  // Default date filter: Bulan Ini (1 s/d hari ini)
   const now = new Date();
-  const currentYear = String(now.getFullYear());
-  const currentMonth = String(now.getMonth() + 1);
+  const defaultStartDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  const defaultEndDate = formatDateLocal(now);
 
-  const [manualDay, setManualDay] = useState<string>('ALL'); // 'ALL' or '1'..'31'
-  const [manualMonth, setManualMonth] = useState<string>(currentMonth);
-  const [manualYear, setManualYear] = useState<string>(currentYear);
+  const [startDate, setStartDate] = useState<string>(defaultStartDate);
+  const [endDate, setEndDate] = useState<string>(defaultEndDate);
 
-  const initialRange = computeDateRangeFromManual('ALL', currentMonth, currentYear);
-  const [startDate, setStartDate] = useState<string>(initialRange.start);
-  const [endDate, setEndDate] = useState<string>(initialRange.end);
+  const handleSetToday = () => {
+    const today = formatDateLocal(new Date());
+    setStartDate(today);
+    setEndDate(today);
+  };
 
-  const maxDaysInMonth = useMemo(() => {
-    if (manualMonth === 'ALL') return 31;
-    const y = parseInt(manualYear, 10) || new Date().getFullYear();
-    const m = parseInt(manualMonth, 10) || 1;
-    return new Date(y, m, 0).getDate();
-  }, [manualYear, manualMonth]);
-
-  const handleManualChange = (newDay: string, newMonth: string, newYear: string) => {
-    setManualDay(newDay);
-    setManualMonth(newMonth);
-    setManualYear(newYear);
-    setFilterMode('MANUAL_DMY');
-    const { start, end } = computeDateRangeFromManual(newDay, newMonth, newYear);
+  const handleSetThisMonth = () => {
+    const d = new Date();
+    const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    const today = formatDateLocal(d);
     setStartDate(start);
-    setEndDate(end);
+    setEndDate(today);
+  };
+
+  const handleSetLastMonth = () => {
+    const d = new Date();
+    const prevMonthDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const y = prevMonthDate.getFullYear();
+    const m = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, prevMonthDate.getMonth() + 1, 0).getDate();
+    setStartDate(`${y}-${m}-01`);
+    setEndDate(`${y}-${m}-${String(lastDay).padStart(2, '0')}`);
+  };
+
+  const handleSetThisYear = () => {
+    const d = new Date();
+    setStartDate(`${d.getFullYear()}-01-01`);
+    setEndDate(formatDateLocal(d));
   };
 
   const handleSetAllTime = () => {
-    setFilterMode('ALL');
     setStartDate('');
     setEndDate('');
   };
 
   const activePeriodLabel = useMemo(() => {
-    if (filterMode === 'ALL' || (!startDate && !endDate)) {
+    if (!startDate && !endDate) {
       return 'Semua Waktu (Sepanjang Masa)';
     }
-    if (filterMode === 'MANUAL_DMY') {
-      const yearStr = manualYear;
-      if (manualMonth === 'ALL') {
-        return `Tahun ${yearStr} (1 Tahun Penuh)`;
-      }
-      const monthName = MONTHS[Number(manualMonth) - 1] || '';
-      if (manualDay === 'ALL') {
-        return `${monthName} ${yearStr} (1 Bulan Penuh)`;
-      }
-      return `${manualDay} ${monthName} ${yearStr}`;
-    }
-    // CUSTOM_RANGE
     if (startDate && endDate) {
-      if (startDate === endDate) return formatDisplayDate(startDate);
+      if (startDate === endDate) {
+        return formatDisplayDate(startDate);
+      }
       return `${formatDisplayDate(startDate)} — ${formatDisplayDate(endDate)}`;
     }
     if (startDate) return `Sejak ${formatDisplayDate(startDate)}`;
     if (endDate) return `Hingga ${formatDisplayDate(endDate)}`;
     return 'Semua Waktu';
-  }, [filterMode, startDate, endDate, manualDay, manualMonth, manualYear]);
+  }, [startDate, endDate]);
 
   const loadData = async () => {
     try {
@@ -244,191 +205,85 @@ export default function SuperAdminReportsPage() {
           </div>
         </div>
 
-        {/* Row 2: Manual Customize (Tanggal, Bulan & Tahun) */}
+        {/* Row 2: Filter Rentang Tanggal Sederhana & Praktis */}
         <div className="pt-3 border-t border-neutral-800/80 space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <span className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-[#D4AF37]" />
-              Pilihan Waktu (Pilih Manual):
-            </span>
-
-            {/* Toggle Modes: Manual DMY / Rentang Bebas / Semua */}
-            <div className="flex items-center gap-1.5 bg-[#181C24] p-1 rounded-xl border border-neutral-800">
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterMode('MANUAL_DMY');
-                  handleManualChange(manualDay, manualMonth, manualYear);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filterMode === 'MANUAL_DMY'
-                    ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                🗓️ Pilih Tanggal / Bulan / Tahun
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('CUSTOM_RANGE')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filterMode === 'CUSTOM_RANGE'
-                    ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                📅 Rentang Tanggal Bebas
-              </button>
-              <button
-                type="button"
-                onClick={handleSetAllTime}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  filterMode === 'ALL'
-                    ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                🌐 Semua Waktu
-              </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-neutral-300 mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                Dari Tanggal:
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full bg-[#181C24] border border-neutral-700 rounded-xl px-3 py-2 text-xs md:text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-neutral-300 mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                Sampai Tanggal:
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full bg-[#181C24] border border-neutral-700 rounded-xl px-3 py-2 text-xs md:text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+              />
             </div>
           </div>
 
-          {/* Mode 1: MANUAL_DMY (Dropdown Tanggal, Bulan, Tahun secara Manual) */}
-          {filterMode === 'MANUAL_DMY' && (
-            <div className="bg-[#181C24] p-4 rounded-xl border border-neutral-800 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* 1. Tanggal */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
-                    Pilih Tanggal:
-                  </label>
-                  <select
-                    value={manualDay}
-                    onChange={(e) => handleManualChange(e.target.value, manualMonth, manualYear)}
-                    className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                  >
-                    <option value="ALL">Semua Tanggal (1 Bulan Penuh)</option>
-                    {Array.from({ length: maxDaysInMonth }, (_, i) => i + 1).map((d) => (
-                      <option key={d} value={String(d)}>
-                        Tanggal {d}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+          {/* Quick preset pills */}
+          <div className="flex items-center gap-2 pt-1 text-xs flex-wrap">
+            <span className="text-[11px] text-neutral-400">Pilih Cepat:</span>
+            <button
+              type="button"
+              onClick={handleSetToday}
+              className="px-3 py-1.5 rounded-lg bg-[#181C24] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            >
+              Hari Ini
+            </button>
+            <button
+              type="button"
+              onClick={handleSetThisMonth}
+              className="px-3 py-1.5 rounded-lg bg-[#181C24] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            >
+              Bulan Ini
+            </button>
+            <button
+              type="button"
+              onClick={handleSetLastMonth}
+              className="px-3 py-1.5 rounded-lg bg-[#181C24] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            >
+              Bulan Lalu
+            </button>
+            <button
+              type="button"
+              onClick={handleSetThisYear}
+              className="px-3 py-1.5 rounded-lg bg-[#181C24] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            >
+              Tahun Ini
+            </button>
+            <button
+              type="button"
+              onClick={handleSetAllTime}
+              className="px-3 py-1.5 rounded-lg bg-[#181C24] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs font-medium transition-colors"
+            >
+              Semua Waktu
+            </button>
 
-                {/* 2. Bulan */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
-                    Pilih Bulan:
-                  </label>
-                  <select
-                    value={manualMonth}
-                    onChange={(e) => handleManualChange(manualDay, e.target.value, manualYear)}
-                    className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                  >
-                    <option value="ALL">Semua Bulan (1 Tahun Penuh)</option>
-                    {MONTHS.map((m, idx) => (
-                      <option key={idx + 1} value={String(idx + 1)}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. Tahun */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
-                    Pilih Tahun:
-                  </label>
-                  <select
-                    value={manualYear}
-                    onChange={(e) => handleManualChange(manualDay, manualMonth, e.target.value)}
-                    className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                  >
-                    {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
-                      <option key={y} value={String(y)}>
-                        Tahun {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Quick helper shortcuts */}
-              <div className="flex items-center gap-2 pt-2.5 border-t border-neutral-800/80 text-xs flex-wrap">
-                <span className="text-[11px] text-neutral-400">Pintasan Cepat:</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const d = new Date();
-                    handleManualChange(String(d.getDate()), String(d.getMonth() + 1), String(d.getFullYear()));
-                  }}
-                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
-                >
-                  Hari Ini
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const d = new Date();
-                    handleManualChange('ALL', String(d.getMonth() + 1), String(d.getFullYear()));
-                  }}
-                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
-                >
-                  Bulan Ini
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const d = new Date();
-                    const lastM = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-                    handleManualChange('ALL', String(lastM.getMonth() + 1), String(lastM.getFullYear()));
-                  }}
-                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
-                >
-                  Bulan Lalu
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const d = new Date();
-                    handleManualChange('ALL', 'ALL', String(d.getFullYear()));
-                  }}
-                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
-                >
-                  Tahun Ini
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Mode 2: CUSTOM_RANGE (Dari Tanggal s/d Sampai Tanggal Bebas) */}
-          {filterMode === 'CUSTOM_RANGE' && (
-            <div className="bg-[#181C24] p-4 rounded-xl border border-neutral-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
-                  Dari Tanggal:
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
-                  Sampai Tanggal:
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                />
-              </div>
-            </div>
-          )}
+            {(startDate || endDate) && (
+              <button
+                type="button"
+                onClick={handleSetAllTime}
+                className="text-[11px] text-neutral-400 hover:text-amber-400 flex items-center gap-1 underline ml-auto transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Reset Tanggal
+              </button>
+            )}
+          </div>
         </div>
       </Card>
 
