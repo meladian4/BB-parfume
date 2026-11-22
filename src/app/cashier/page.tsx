@@ -52,7 +52,12 @@ import {
   Truck,
   X,
   ArrowRight,
+  Bluetooth,
 } from 'lucide-react';
+import {
+  printReceiptViaBluetooth,
+  isWebBluetoothSupported,
+} from '@/lib/bluetooth-printer';
 
 interface CartItem {
   product: Product;
@@ -160,6 +165,32 @@ export default function CashierPOSPage() {
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [receiptPaperSize, setReceiptPaperSize] = useState<'58mm' | '80mm'>('58mm');
+  const [btPrinting, setBtPrinting] = useState(false);
+  const [btPrinterName, setBtPrinterName] = useState<string | null>(null);
+  const [btStatusMsg, setBtStatusMsg] = useState<string | null>(null);
+
+  const handlePrintBluetooth = async () => {
+    if (!completedSale) return;
+    try {
+      setBtPrinting(true);
+      setBtStatusMsg('Sedang menyambungkan ke printer bluetooth...');
+      const cashierName = completedSale.cashier?.full_name || user?.full_name || 'Kasir';
+      const res = await printReceiptViaBluetooth(
+        completedSale,
+        store,
+        cashierName,
+        receiptPaperSize
+      );
+      setBtPrinterName(res.printerName);
+      setBtStatusMsg(`✓ Berhasil mencetak ke ${res.printerName}`);
+      setTimeout(() => setBtStatusMsg(null), 5000);
+    } catch (err: any) {
+      console.error('Bluetooth Print Error:', err);
+      setBtStatusMsg(`Gagal: ${err.message || 'Printer bluetooth tidak terhubung'}`);
+    } finally {
+      setBtPrinting(false);
+    }
+  };
 
   // State Modal Racik / Campur Bibit (Custom Blend)
   const [isBlendModalOpen, setIsBlendModalOpen] = useState(false);
@@ -1812,34 +1843,83 @@ export default function CashierPOSPage() {
             </div>
           </div>
 
-          <div className="flex justify-between items-center pt-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (completedSale) {
-                  window.open(`/cashier/receipt/${completedSale.id}?size=${receiptPaperSize}`, '_blank');
-                }
-              }}
+          {/* Status Bluetooth Notification */}
+          {btStatusMsg && (
+            <div
+              className={`p-3 rounded-xl text-xs flex items-center justify-between border ${
+                btStatusMsg.startsWith('✓')
+                  ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300'
+                  : 'bg-rose-950/70 border-rose-500/40 text-rose-300'
+              }`}
             >
-              Buka Halaman Cetak Penuh
-            </Button>
-            <div className="flex gap-2">
+              <div className="flex items-center gap-2">
+                <Bluetooth className="w-4 h-4 shrink-0" />
+                <span className="font-medium">{btStatusMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBtStatusMsg(null)}
+                className="text-xs opacity-60 hover:opacity-100"
+              >
+                &times;
+              </button>
+            </div>
+          )}
+
+          {/* Action Buttons for Printing */}
+          <div className="space-y-2.5 pt-2 border-t border-slate-800">
+            {/* Tombol Utama: Direct Bluetooth Print (Otomatis & Cepat) */}
+            <button
+              type="button"
+              onClick={handlePrintBluetooth}
+              disabled={btPrinting}
+              className="w-full h-12 min-h-[44px] px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40 active:scale-[0.98] transition touch-manipulation disabled:opacity-50"
+            >
+              <Bluetooth className={`w-5 h-5 ${btPrinting ? 'animate-spin' : ''}`} />
+              <span>
+                {btPrinting
+                  ? 'Sedang Mengirim ke Printer Bluetooth...'
+                  : btPrinterName
+                  ? `Cetak ke ${btPrinterName} (Bluetooth)`
+                  : 'Hubungkan & Cetak Thermal Bluetooth'}
+              </span>
+            </button>
+
+            {/* Opsi Cadangan (Browser Print & Tutup) */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               <Button
-                variant="gold"
+                variant="secondary"
+                size="sm"
                 onClick={() => {
-                  window.print();
+                  if (completedSale) {
+                    window.open(`/cashier/receipt/${completedSale.id}?size=${receiptPaperSize}`, '_blank');
+                  }
                 }}
-                className="flex items-center gap-1.5"
+                className="w-full sm:w-auto text-xs"
               >
-                <Printer className="w-4 h-4" />
-                Cetak Struk Sekarang
+                Buka Tab Cetak Baru
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => setIsReceiptModalOpen(false)}
-              >
-                Tutup
-              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.print()}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs text-slate-300 border-slate-700 hover:bg-slate-800"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Browser</span>
+                </Button>
+
+                <Button
+                  variant="gold"
+                  size="sm"
+                  onClick={() => setIsReceiptModalOpen(false)}
+                  className="flex-1 sm:flex-initial text-xs font-bold"
+                >
+                  Selesai
+                </Button>
+              </div>
             </div>
           </div>
         </div>
