@@ -233,7 +233,12 @@ export default function SuperAdminSettingsPage() {
                 </div>
 
                 <div className="pt-4 border-t border-[#1E293B] flex justify-end">
-                  <Button variant="gold" type="submit" disabled={saving}>
+                  <Button
+                    variant="gold"
+                    type="submit"
+                    disabled={saving}
+                    className="w-full sm:w-auto h-12 sm:h-10 text-sm font-bold min-h-[44px]"
+                  >
                     {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
                   </Button>
                 </div>

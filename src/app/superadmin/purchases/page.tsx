@@ -301,10 +301,10 @@ export default function SuperAdminPurchasesPage() {
 
       {/* Tabs & Search & Filter Tanggal */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="flex flex-wrap text-xs gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-none text-xs">
           <button
             onClick={() => setActiveTab('PENDING')}
-            className={`pb-2 px-3 font-medium transition flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 font-medium transition flex items-center gap-1.5 shrink-0 min-h-[40px] touch-manipulation ${
               activeTab === 'PENDING'
                 ? 'text-blue-400 border-b-2 border-blue-400 font-bold'
                 : 'text-slate-400 hover:text-white'
@@ -315,7 +315,7 @@ export default function SuperAdminPurchasesPage() {
           </button>
           <button
             onClick={() => setActiveTab('ALL')}
-            className={`pb-2 px-3 font-medium transition ${
+            className={`pb-2.5 px-3 font-medium transition shrink-0 min-h-[40px] touch-manipulation ${
               activeTab === 'ALL'
                 ? 'text-[#E5C365] border-b-2 border-[#D4AF37] font-bold'
                 : 'text-slate-400 hover:text-white'
@@ -325,7 +325,7 @@ export default function SuperAdminPurchasesPage() {
           </button>
           <button
             onClick={() => setActiveTab('ORDERED')}
-            className={`pb-2 px-3 font-medium transition ${
+            className={`pb-2.5 px-3 font-medium transition shrink-0 min-h-[40px] touch-manipulation ${
               activeTab === 'ORDERED'
                 ? 'text-amber-400 border-b-2 border-amber-400 font-bold'
                 : 'text-slate-400 hover:text-white'
@@ -335,7 +335,7 @@ export default function SuperAdminPurchasesPage() {
           </button>
           <button
             onClick={() => setActiveTab('RECEIVED')}
-            className={`pb-2 px-3 font-medium transition ${
+            className={`pb-2.5 px-3 font-medium transition shrink-0 min-h-[40px] touch-manipulation ${
               activeTab === 'RECEIVED'
                 ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold'
                 : 'text-slate-400 hover:text-white'
@@ -345,47 +345,51 @@ export default function SuperAdminPurchasesPage() {
           </button>
         </div>
 
-        {/* Filter Tanggal & Search Bar */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Filter Tanggal & Search Bar (Mobile-Friendly Stack) */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
           {/* Filter Tanggal */}
-          <div className="flex items-center gap-1.5 bg-[#0F172A] border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs">
-            <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
-            <span className="text-[11px] text-slate-400">Tanggal:</span>
-            <input
-              type="date"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-transparent text-xs text-white focus:outline-none [color-scheme:dark]"
-            />
-            {dateFilter ? (
-              <button
-                type="button"
-                onClick={() => setDateFilter('')}
-                className="text-slate-400 hover:text-rose-400 text-xs px-1"
-                title="Reset tanggal (tampilkan semua)"
-              >
-                &times;
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setDateFilter(todayStr)}
-                className="text-[10px] text-slate-400 hover:text-[#D4AF37] px-1 bg-slate-800 rounded"
-              >
-                Hari Ini
-              </button>
-            )}
+          <div className="flex items-center justify-between sm:justify-start gap-2 bg-[#0F172A] border border-slate-800 rounded-xl px-3 py-2 sm:py-1.5 text-xs min-h-[44px] sm:min-h-0">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-[#D4AF37] shrink-0" />
+              <span className="text-[11px] text-slate-400 font-medium">Tanggal:</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="bg-transparent text-xs text-white focus:outline-none [color-scheme:dark]"
+              />
+              {dateFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setDateFilter('')}
+                  className="text-slate-400 hover:text-rose-400 text-xs px-2 py-1 rounded bg-slate-800 touch-manipulation"
+                  title="Reset tanggal (tampilkan semua)"
+                >
+                  &times;
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDateFilter(todayStr)}
+                  className="text-[11px] text-slate-300 hover:text-[#D4AF37] px-2 py-1 bg-slate-800 rounded font-semibold touch-manipulation"
+                >
+                  Hari Ini
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Search Box */}
-          <div className="relative max-w-xs w-full sm:w-56">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full sm:w-60">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cari No. PO / barang / supplier..."
+              placeholder="Cari No. PO / barang..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-[#0F172A] border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#D4AF37]"
+              className="w-full pl-9 pr-3 py-2 sm:py-1.5 bg-[#0F172A] border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#D4AF37] min-h-[44px] sm:min-h-0 touch-manipulation"
             />
           </div>
         </div>
@@ -428,25 +432,18 @@ export default function SuperAdminPurchasesPage() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#162036] text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
-                  <tr>
-                    <th className="py-3 px-4">Tanggal &amp; No. Pengajuan</th>
-                    <th className="py-3 px-4">Daftar Item &amp; Kuantitas Diminta</th>
-                    <th className="py-3 px-4">Estimasi Anggaran HPP</th>
-                    <th className="py-3 px-4">Status Acuan</th>
-                    <th className="py-3 px-4 text-right">Otorisasi Super Admin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
-                  {filteredPurchases.map((po) => {
-                    const isToday = new Date(po.created_at).toISOString().split('T')[0] === todayStr;
-                    return (
-                      <tr key={po.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-1.5 font-mono font-bold text-[#E5C365]">
-                            <FileText className="w-3.5 h-3.5 text-[#D4AF37]" />
+            <>
+              {/* 1. MOBILE CARD VIEW (Tampil di Layar HP < md: Presisi & Mudah Dijangkau Jempol) */}
+              <div className="md:hidden divide-y divide-slate-800">
+                {filteredPurchases.map((po) => {
+                  const isToday = new Date(po.created_at).toISOString().split('T')[0] === todayStr;
+                  return (
+                    <div key={po.id} className="p-4 space-y-3 bg-[#0F172A]/70 hover:bg-slate-800/30 transition">
+                      {/* Header Card: PO Number, Status, & Tanggal */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 font-mono font-bold text-[#E5C365] text-sm">
+                            <FileText className="w-4 h-4 text-[#D4AF37] shrink-0" />
                             <span>{po.po_number}</span>
                             {isToday && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans font-bold">
@@ -454,150 +451,282 @@ export default function SuperAdminPurchasesPage() {
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1 text-[11px] text-slate-300 font-medium mt-1">
-                            <Calendar className="w-3 h-3 text-slate-400" />
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium mt-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                             <span>{formatDateTimeJakarta(po.created_at)}</span>
                           </div>
-                          {po.notes && (
-                            <div className="text-[10px] text-slate-400 italic mt-1 font-sans font-normal bg-slate-900/60 px-2 py-1 rounded border border-slate-800/80">
-                              Catatan: {po.notes}
-                            </div>
+                        </div>
+
+                        <div>
+                          {po.status === 'PENDING_APPROVAL' && (
+                            <Badge variant="blue" size="sm">Menunggu Review</Badge>
                           )}
-                        </td>
+                          {po.status === 'ORDERED' && (
+                            <Badge variant="amber" size="sm">Disetujui Owner</Badge>
+                          )}
+                          {po.status === 'RECEIVED' && (
+                            <Badge variant="emerald" size="sm">Selesai Masuk</Badge>
+                          )}
+                          {po.status === 'REJECTED' && (
+                            <Badge variant="rose" size="sm">Ditolak</Badge>
+                          )}
+                        </div>
+                      </div>
 
-                        <td className="py-3.5 px-4">
-                          <div className="mb-1.5 flex items-center gap-1.5">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/80 text-blue-300 border border-blue-800/60">
-                              {po.items?.length || 0} SKU Diajukan Bersama
-                            </span>
-                          </div>
-                          <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
-                            {po.items?.map((it) => (
-                              <div key={it.id} className="text-[11px] text-slate-300 flex items-center justify-between gap-3 bg-slate-900/50 px-2 py-0.5 rounded">
-                                <span className="truncate max-w-[200px]" title={it.product?.name}>
-                                  {it.product?.name}
-                                </span>
-                                <span className="font-bold font-mono text-white shrink-0">
-                                  {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
+                      {/* Catatan jika ada */}
+                      {po.notes && (
+                        <div className="text-[11px] text-slate-400 italic bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+                          Catatan: {po.notes}
+                        </div>
+                      )}
 
-                        <td className="py-3.5 px-4 font-mono">
-                          <div className="font-bold text-emerald-400 text-sm">
+                      {/* List Item & Estimasi Anggaran */}
+                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800/80 space-y-2">
+                        <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-800">
+                          <span className="text-slate-400 font-medium">{po.items?.length || 0} SKU Diajukan:</span>
+                          <span className="font-mono font-bold text-emerald-400 text-sm">
                             {formatIDR(po.total_amount)}
-                          </div>
-                        <div className="text-[9px] text-slate-500">Estimasi Biaya Modal</div>
-                      </td>
+                          </span>
+                        </div>
 
-                      <td className="py-3.5 px-4">
-                        {po.status === 'PENDING_APPROVAL' && (
-                          <Badge variant="blue" size="sm">
-                            <Clock className="w-3 h-3 inline mr-1" />
-                            Menunggu Review
-                          </Badge>
-                        )}
-
-                        {po.status === 'ORDERED' && (
-                          <div>
-                            <Badge variant="amber" size="sm">
-                              <CheckCircle className="w-3 h-3 inline mr-1" />
-                              Disetujui Owner
-                            </Badge>
-                            <div className="text-[10px] text-amber-300 mt-1">
-                              Sedang diproses belanja
+                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                          {po.items?.map((it) => (
+                            <div key={it.id} className="text-xs text-slate-300 flex items-center justify-between gap-2 bg-slate-900/90 px-2.5 py-1.5 rounded-lg">
+                              <span className="truncate text-slate-200 font-medium">{it.product?.name}</span>
+                              <span className="font-mono font-bold text-white shrink-0 bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                                {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                              </span>
                             </div>
-                          </div>
-                        )}
+                          ))}
+                        </div>
+                      </div>
 
-                        {po.status === 'RECEIVED' && (
-                          <div>
-                            <Badge variant="emerald" size="sm">
-                              <CheckCircle className="w-3 h-3 inline mr-1" />
-                              Selesai Masuk Stok
-                            </Badge>
-                            <div className="text-[10px] text-emerald-400/80 mt-1">
-                              {formatDateTimeJakarta(po.received_at)}
-                            </div>
-                          </div>
-                        )}
-
-                        {po.status === 'REJECTED' && (
-                          <div>
-                            <Badge variant="rose" size="sm">
-                              <XCircle className="w-3 h-3 inline mr-1" />
-                              Ditolak
-                            </Badge>
-                            {po.rejection_reason && (
-                              <div className="text-[10px] text-rose-300 mt-1">
-                                Ket: {po.rejection_reason}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="py-3.5 px-4 text-right">
-                        {po.status === 'PENDING_APPROVAL' && (
-                          <div className="flex items-center justify-end gap-2 flex-wrap">
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-sm"
-                              isLoading={actionLoadingId === po.id}
-                              onClick={() => handleOpenApproveModal(po)}
-                            >
-                              <CheckCheck className="w-3.5 h-3.5 mr-1" />
-                              <span>Setujui & Masuk Stok</span>
-                            </Button>
-
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              className="bg-rose-950/40 text-rose-300 border-rose-800/60 hover:bg-rose-900/50"
-                              isLoading={actionLoadingId === po.id}
-                              onClick={() => handleOpenReject(po)}
-                            >
-                              <XCircle className="w-3.5 h-3.5 mr-1" />
-                              <span>Tolak</span>
-                            </Button>
-                          </div>
-                        )}
-
-                        {po.status === 'ORDERED' && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-sm"
-                            isLoading={actionLoadingId === po.id}
+                      {/* TOMBOL AKSI MOBILE (Besar, min-h-[44px], mudah dijangkau jempol!) */}
+                      {po.status === 'PENDING_APPROVAL' && (
+                        <div className="flex flex-col gap-2 pt-1">
+                          <button
+                            type="button"
                             onClick={() => handleOpenApproveModal(po)}
+                            disabled={actionLoadingId === po.id}
+                            className="w-full h-12 min-h-[44px] bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 active:scale-[0.98] transition touch-manipulation"
                           >
-                            <PackageCheck className="w-3.5 h-3.5 mr-1" />
-                            <span>Konfirmasi Masuk Stok</span>
-                          </Button>
-                        )}
+                            <CheckCheck className="w-4 h-4" />
+                            <span>Setujui &amp; Masuk Stok</span>
+                          </button>
 
-                        {po.status === 'RECEIVED' && (
-                          <span className="text-[11px] text-emerald-400 font-semibold inline-flex items-center gap-1">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>Stok Gudang Resmi Bertambah</span>
-                          </span>
-                        )}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenReject(po)}
+                            disabled={actionLoadingId === po.id}
+                            className="w-full h-10 min-h-[40px] bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 border border-rose-800/60 font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-[0.98] transition touch-manipulation"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            <span>Tolak Pengajuan</span>
+                          </button>
+                        </div>
+                      )}
 
-                        {po.status === 'REJECTED' && (
-                          <span className="text-[11px] text-rose-400 font-medium">
-                            Permintaan Ditolak Owner
-                          </span>
-                        )}
-                      </td>
-                    </tr>
+                      {po.status === 'ORDERED' && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenApproveModal(po)}
+                          disabled={actionLoadingId === po.id}
+                          className="w-full h-12 min-h-[44px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition touch-manipulation"
+                        >
+                          <PackageCheck className="w-4 h-4" />
+                          <span>Konfirmasi Masuk Stok</span>
+                        </button>
+                      )}
+
+                      {po.status === 'RECEIVED' && (
+                        <div className="text-[11px] text-emerald-400 font-semibold inline-flex items-center gap-1 pt-1">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Stok Gudang Resmi Bertambah ({formatDateTimeJakarta(po.received_at)})</span>
+                        </div>
+                      )}
+
+                      {po.status === 'REJECTED' && (
+                        <div className="text-[11px] text-rose-400 font-medium pt-1">
+                          Permintaan Ditolak Owner {po.rejection_reason && `(Ket: ${po.rejection_reason})`}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-              </table>
-            </div>
+              </div>
+
+              {/* 2. DESKTOP TABLE VIEW (Tampil di Layar Komputer / Laptop >= md) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#162036] text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Tanggal &amp; No. Pengajuan</th>
+                      <th className="py-3 px-4">Daftar Item &amp; Kuantitas Diminta</th>
+                      <th className="py-3 px-4">Estimasi Anggaran HPP</th>
+                      <th className="py-3 px-4">Status Acuan</th>
+                      <th className="py-3 px-4 text-right">Otorisasi Super Admin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                    {filteredPurchases.map((po) => {
+                      const isToday = new Date(po.created_at).toISOString().split('T')[0] === todayStr;
+                      return (
+                        <tr key={po.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-1.5 font-mono font-bold text-[#E5C365]">
+                              <FileText className="w-3.5 h-3.5 text-[#D4AF37]" />
+                              <span>{po.po_number}</span>
+                              {isToday && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-sans font-bold">
+                                  Hari Ini
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] text-slate-300 font-medium mt-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>{formatDateTimeJakarta(po.created_at)}</span>
+                            </div>
+                            {po.notes && (
+                              <div className="text-[10px] text-slate-400 italic mt-1 font-sans font-normal bg-slate-900/60 px-2 py-1 rounded border border-slate-800/80">
+                                Catatan: {po.notes}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <div className="mb-1.5 flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950/80 text-blue-300 border border-blue-800/60">
+                                {po.items?.length || 0} SKU Diajukan Bersama
+                              </span>
+                            </div>
+                            <div className="space-y-1 max-h-36 overflow-y-auto pr-1">
+                              {po.items?.map((it) => (
+                                <div key={it.id} className="text-[11px] text-slate-300 flex items-center justify-between gap-3 bg-slate-900/50 px-2 py-0.5 rounded">
+                                  <span className="truncate max-w-[200px]" title={it.product?.name}>
+                                    {it.product?.name}
+                                  </span>
+                                  <span className="font-bold font-mono text-white shrink-0">
+                                    {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 font-mono">
+                            <div className="font-bold text-emerald-400 text-sm">
+                              {formatIDR(po.total_amount)}
+                            </div>
+                            <div className="text-[9px] text-slate-500">Estimasi Biaya Modal</div>
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            {po.status === 'PENDING_APPROVAL' && (
+                              <Badge variant="blue" size="sm">
+                                <Clock className="w-3 h-3 inline mr-1" />
+                                Menunggu Review
+                              </Badge>
+                            )}
+
+                            {po.status === 'ORDERED' && (
+                              <div>
+                                <Badge variant="amber" size="sm">
+                                  <CheckCircle className="w-3 h-3 inline mr-1" />
+                                  Disetujui Owner
+                                </Badge>
+                                <div className="text-[10px] text-amber-300 mt-1">
+                                  Sedang diproses belanja
+                                </div>
+                              </div>
+                            )}
+
+                            {po.status === 'RECEIVED' && (
+                              <div>
+                                <Badge variant="emerald" size="sm">
+                                  <CheckCircle className="w-3 h-3 inline mr-1" />
+                                  Selesai Masuk Stok
+                                </Badge>
+                                <div className="text-[10px] text-emerald-400/80 mt-1">
+                                  {formatDateTimeJakarta(po.received_at)}
+                                </div>
+                              </div>
+                            )}
+
+                            {po.status === 'REJECTED' && (
+                              <div>
+                                <Badge variant="rose" size="sm">
+                                  <XCircle className="w-3 h-3 inline mr-1" />
+                                  Ditolak
+                                </Badge>
+                                {po.rejection_reason && (
+                                  <div className="text-[10px] text-rose-300 mt-1">
+                                    Ket: {po.rejection_reason}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            {po.status === 'PENDING_APPROVAL' && (
+                              <div className="flex items-center justify-end gap-2 flex-wrap">
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-sm"
+                                  isLoading={actionLoadingId === po.id}
+                                  onClick={() => handleOpenApproveModal(po)}
+                                >
+                                  <CheckCheck className="w-3.5 h-3.5 mr-1" />
+                                  <span>Setujui &amp; Masuk Stok</span>
+                                </Button>
+
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="bg-rose-950/40 text-rose-300 border-rose-800/60 hover:bg-rose-900/50"
+                                  isLoading={actionLoadingId === po.id}
+                                  onClick={() => handleOpenReject(po)}
+                                >
+                                  <XCircle className="w-3.5 h-3.5 mr-1" />
+                                  <span>Tolak</span>
+                                </Button>
+                              </div>
+                            )}
+
+                            {po.status === 'ORDERED' && (
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-sm"
+                                isLoading={actionLoadingId === po.id}
+                                onClick={() => handleOpenApproveModal(po)}
+                              >
+                                <PackageCheck className="w-3.5 h-3.5 mr-1" />
+                                <span>Konfirmasi Masuk Stok</span>
+                              </Button>
+                            )}
+
+                            {po.status === 'RECEIVED' && (
+                              <span className="text-[11px] text-emerald-400 font-semibold inline-flex items-center gap-1">
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                <span>Stok Gudang Resmi Bertambah</span>
+                              </span>
+                            )}
+
+                            {po.status === 'REJECTED' && (
+                              <span className="text-[11px] text-rose-400 font-medium">
+                                Permintaan Ditolak Owner
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -702,7 +831,7 @@ export default function SuperAdminPurchasesPage() {
                       </div>
 
                       {/* 3 Kolom Interaktif: Kuantitas Riil Belanja, Subtotal Nota (Auto Divide), Harga Satuan */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2.5 border-t border-slate-800/80 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2.5 border-t border-slate-800/80 text-xs">
                         {/* 1. Kuantitas Riil Belanja (Masuk Stok Gudang) */}
                         <div>
                           <label className="block text-[11px] text-slate-300 mb-1 font-semibold flex items-center justify-between">
@@ -720,7 +849,7 @@ export default function SuperAdminPurchasesPage() {
                               onChange={(e) =>
                                 handleItemQuantityChange(item.product_id, parseFloat(e.target.value) || 0)
                               }
-                              className="w-full px-3 py-1.5 bg-[#0A0E1A] border border-slate-700 rounded-lg text-xs font-mono font-bold text-white focus:outline-none focus:border-[#D4AF37]"
+                              className="w-full px-3 py-2 sm:py-1.5 bg-[#0A0E1A] border border-slate-700 rounded-lg text-sm sm:text-xs font-mono font-bold text-white focus:outline-none focus:border-[#D4AF37] min-h-[42px] sm:min-h-0 touch-manipulation"
                               placeholder="Kuantitas"
                               required
                             />
@@ -743,7 +872,7 @@ export default function SuperAdminPurchasesPage() {
                         <div>
                           <label className="block text-[11px] text-[#E5C365] mb-1 font-semibold flex items-center justify-between">
                             <span>Total Nota Belanja:</span>
-                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded font-normal">
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-normal">
                               Bagi Otomatis
                             </span>
                           </label>
@@ -759,7 +888,7 @@ export default function SuperAdminPurchasesPage() {
                               onChange={(e) =>
                                 handleItemSubtotalChange(item.product_id, parseFloat(e.target.value) || 0)
                               }
-                              className="w-full pl-9 pr-3 py-1.5 bg-[#0A0E1A] border border-amber-500/50 rounded-lg text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-[#D4AF37]"
+                              className="w-full pl-9 pr-3 py-2 sm:py-1.5 bg-[#0A0E1A] border border-amber-500/50 rounded-lg text-sm sm:text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-[#D4AF37] min-h-[42px] sm:min-h-0 touch-manipulation"
                               placeholder="Total Nota"
                               required
                             />
@@ -786,7 +915,7 @@ export default function SuperAdminPurchasesPage() {
                               onChange={(e) =>
                                 handleItemCostChange(item.product_id, parseFloat(e.target.value) || 0)
                               }
-                              className="w-full pl-9 pr-3 py-1.5 bg-[#0A0E1A] border border-slate-700 rounded-lg text-xs font-mono text-white focus:outline-none focus:border-[#D4AF37]"
+                              className="w-full pl-9 pr-3 py-2 sm:py-1.5 bg-[#0A0E1A] border border-slate-700 rounded-lg text-sm sm:text-xs font-mono text-white focus:outline-none focus:border-[#D4AF37] min-h-[42px] sm:min-h-0 touch-manipulation"
                               placeholder="Harga Satuan"
                               required
                             />
@@ -868,26 +997,27 @@ export default function SuperAdminPurchasesPage() {
               );
             })()}
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-800">
+            {/* Action Buttons Sticky di Bawah Modal (Sangat Pas & Mudah Dijangkau Jempol di HP) */}
+            <div className="sticky -bottom-3.5 sm:-bottom-6 -mx-3.5 sm:-mx-6 px-3.5 sm:px-6 py-3 bg-[#0F172A] border-t border-slate-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 shadow-2xl z-20">
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
+                size="md"
                 disabled={approveSubmitting}
                 onClick={() => setIsApproveModalOpen(false)}
+                className="w-full sm:w-auto h-11 sm:h-10 text-xs sm:text-sm font-semibold order-2 sm:order-1"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md px-5"
+                size="md"
+                className="w-full sm:w-auto h-12 sm:h-10 text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-950/50 px-5 order-1 sm:order-2 active:scale-[0.98]"
                 isLoading={approveSubmitting}
               >
                 <PackageCheck className="w-4 h-4 mr-1.5" />
-                <span>Setujui & Tambah ke Stok Sekarang</span>
+                <span>Setujui &amp; Tambah ke Stok Sekarang</span>
               </Button>
             </div>
           </form>
@@ -921,25 +1051,26 @@ export default function SuperAdminPurchasesPage() {
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 placeholder="Contoh: Saldo stok di cabang masih mencukupi, alokasi anggaran dialihkan ke item lain..."
-                className="w-full px-3 py-2 bg-[#0A0E1A] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                className="w-full px-3 py-2 bg-[#0A0E1A] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 min-h-[44px] touch-manipulation"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-slate-800">
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
+                size="md"
                 disabled={rejectSubmitting}
                 onClick={() => setIsRejectModalOpen(false)}
+                className="w-full sm:w-auto h-11 sm:h-10 text-xs sm:text-sm font-semibold order-2 sm:order-1"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
                 variant="primary"
-                size="sm"
-                className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
+                size="md"
+                className="w-full sm:w-auto h-12 sm:h-10 text-sm font-bold bg-rose-600 hover:bg-rose-500 text-white order-1 sm:order-2 active:scale-[0.98]"
                 isLoading={rejectSubmitting}
               >
                 <XCircle className="w-4 h-4 mr-1.5" />

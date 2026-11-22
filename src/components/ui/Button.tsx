@@ -20,12 +20,12 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#090D16] active:scale-[0.98] select-none';
+    'inline-flex items-center justify-center font-medium transition-all duration-150 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#090D16] active:scale-[0.98] select-none touch-manipulation';
 
   const sizeStyles = {
-    sm: 'text-xs px-3 py-1.5 h-8 gap-1.5',
-    md: 'text-sm px-4 py-2 h-10 gap-2',
-    lg: 'text-base px-6 py-3 h-12 gap-2.5 font-semibold',
+    sm: 'text-xs px-3 py-1.5 h-9 sm:h-8 gap-1.5 min-h-[38px] sm:min-h-[32px]',
+    md: 'text-sm px-4 py-2.5 sm:py-2 h-11 sm:h-10 gap-2 min-h-[44px]',
+    lg: 'text-base px-6 py-3 h-12 gap-2.5 font-semibold min-h-[48px]',
   };
 
   const variantStyles = {

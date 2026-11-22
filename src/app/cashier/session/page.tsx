@@ -257,7 +257,7 @@ export default function CashierSessionPage() {
                     <Button
                       type="submit"
                       disabled={submitting}
-                      className="w-full bg-gradient-to-r from-red-600 to-red-800 text-white font-semibold py-2"
+                      className="w-full h-12 min-h-[44px] bg-gradient-to-r from-red-600 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-red-950/40 text-sm active:scale-[0.98] transition touch-manipulation"
                     >
                       {submitting ? 'Memproses...' : 'Tutup Shift Sekarang'}
                     </Button>
@@ -318,7 +318,7 @@ export default function CashierSessionPage() {
                 <Button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-[#D4AF37] text-black font-semibold py-2.5"
+                  className="w-full h-12 min-h-[44px] bg-gradient-to-r from-[#D4AF37] to-[#E5C365] hover:brightness-105 text-[#070A0F] font-bold py-2.5 rounded-xl shadow-lg shadow-amber-500/20 text-sm active:scale-[0.98] transition touch-manipulation"
                 >
                   {submitting ? 'Membuka...' : 'Buka Shift Kasir Baru'}
                 </Button>

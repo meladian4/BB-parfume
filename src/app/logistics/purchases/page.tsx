@@ -814,21 +814,22 @@ export default function LogisticsPurchasesPage() {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+          <div className="sticky -bottom-3.5 sm:-bottom-6 -mx-3.5 sm:-mx-6 px-3.5 sm:px-6 py-3 bg-[#0F172A] border-t border-slate-800 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 shadow-2xl z-20">
             <Button
               type="button"
               variant="secondary"
-              size="sm"
+              size="md"
               disabled={submitting}
               onClick={() => setIsModalOpen(false)}
+              className="w-full sm:w-auto h-11 sm:h-10 text-xs sm:text-sm font-semibold order-2 sm:order-1"
             >
               Batal
             </Button>
             <Button
               type="submit"
               variant="primary"
-              size="sm"
-              className="bg-[#D4AF37] hover:bg-[#E5C365] text-[#070A0F] font-bold"
+              size="md"
+              className="w-full sm:w-auto h-12 sm:h-10 text-sm font-bold bg-[#D4AF37] hover:bg-[#E5C365] text-[#070A0F] shadow-lg shadow-amber-500/20 order-1 sm:order-2 active:scale-[0.98]"
               isLoading={submitting}
             >
               <Send className="w-4 h-4 mr-1.5" />
@@ -837,6 +838,35 @@ export default function LogisticsPurchasesPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Floating Sticky Action Bar di Mobile saat ada rekomendasi yang diceklis */}
+      {selectedRecIds.length > 0 && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-[#090D16]/95 backdrop-blur-md border-t border-[#1E293B] z-40 flex items-center justify-between gap-3 shadow-2xl animate-in slide-in-from-bottom duration-200">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-amber-500/20 text-[#E5C365] font-black text-xs flex items-center justify-center border border-amber-500/40 font-mono">
+              {selectedRecIds.length}
+            </span>
+            <div>
+              <p className="text-[10px] text-slate-400">SKU Terpilih</p>
+              <button
+                type="button"
+                onClick={handleClearSelectedRecs}
+                className="text-[10px] text-rose-400 hover:underline"
+              >
+                Batalkan Pilihan
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openBatchRequestModal}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#E5C365] text-[#070A0F] font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/20 active:scale-95 transition touch-manipulation min-h-[44px]"
+          >
+            <ListChecks className="w-4 h-4" />
+            <span>Ajukan {selectedRecIds.length} Item &rarr;</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
