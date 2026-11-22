@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { UserRole } from '@/types/domain';
 import {
   LayoutDashboard,
@@ -18,7 +18,6 @@ import {
   Truck,
   Settings,
   Award,
-  Crown,
   PackagePlus,
   Wallet,
   Banknote,
@@ -41,26 +40,7 @@ export interface NavItem {
 
 export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { isMobileOpen, closeMobile, isDesktopCollapsed } = useNavigation();
-
-  const handleSwitch = async (targetPath: string, email: string) => {
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'password123' }),
-      });
-      const data = await res.json();
-      if (data.success && data.user) {
-        localStorage.setItem('bb_current_user', JSON.stringify(data.user));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    closeMobile();
-    router.push(targetPath);
-  };
 
   const superAdminLinks: NavItem[] = [
     { href: '/superadmin', label: 'Ringkasan Utama', icon: LayoutDashboard },
@@ -215,56 +195,8 @@ export function Sidebar({ role }: SidebarProps) {
         {renderNavItems(false)}
 
         {/* Footer Sidebar Desktop */}
-        <div className="p-3 border-t border-[#1E293B] space-y-3">
-          {role === 'SUPER_ADMIN' && !isDesktopCollapsed && (
-            <div className="space-y-1.5">
-              <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider px-1">
-                Beralih Dashboard:
-              </div>
-              <div className="grid grid-cols-3 gap-1">
-                <button
-                  onClick={() => handleSwitch('/superadmin', 'admin@bbparfum.id')}
-                  className={`p-1.5 rounded-md text-[10px] font-semibold flex flex-col items-center justify-center gap-1 border transition ${
-                    pathname.startsWith('/superadmin')
-                      ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#E5C365]'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                  title="Dashboard Super Admin"
-                >
-                  <Crown className="w-3.5 h-3.5" />
-                  <span>Admin</span>
-                </button>
-
-                <button
-                  onClick={() => handleSwitch('/logistics', 'logistik@bbparfum.id')}
-                  className={`p-1.5 rounded-md text-[10px] font-semibold flex flex-col items-center justify-center gap-1 border transition ${
-                    pathname.startsWith('/logistics')
-                      ? 'bg-blue-600/20 border-blue-500 text-blue-400'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                  title="Dashboard Logistik Gudang"
-                >
-                  <Boxes className="w-3.5 h-3.5" />
-                  <span>Logistik</span>
-                </button>
-
-                <button
-                  onClick={() => handleSwitch('/cashier', 'kasir.kendal@bbparfum.id')}
-                  className={`p-1.5 rounded-md text-[10px] font-semibold flex flex-col items-center justify-center gap-1 border transition ${
-                    pathname.startsWith('/cashier')
-                      ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                  title="Terminal Kasir POS"
-                >
-                  <Receipt className="w-3.5 h-3.5" />
-                  <span>Kasir</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className={clsx('flex items-center text-[11px] text-slate-500 pt-1 border-t border-slate-800/60', isDesktopCollapsed ? 'justify-center' : 'justify-between')}>
+        <div className="p-3 border-t border-[#1E293B]">
+          <div className={clsx('flex items-center text-[11px] text-slate-500', isDesktopCollapsed ? 'justify-center' : 'justify-between')}>
             {!isDesktopCollapsed && <span>Kendal, Jateng</span>}
             <span className="text-[#D4AF37] font-mono">v1.0.0</span>
           </div>
@@ -302,53 +234,8 @@ export function Sidebar({ role }: SidebarProps) {
             </div>
 
             {/* Footer Drawer */}
-            <div className="p-4 border-t border-[#1E293B] space-y-3 bg-[#0B101D]/70">
-              {role === 'SUPER_ADMIN' && (
-                <div className="space-y-1.5">
-                  <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Beralih Dashboard:
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    <button
-                      onClick={() => handleSwitch('/superadmin', 'admin@bbparfum.id')}
-                      className={`py-2 px-1 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-1 border transition ${
-                        pathname.startsWith('/superadmin')
-                          ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#E5C365]'
-                          : 'bg-slate-900 border-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <Crown className="w-4 h-4" />
-                      <span>Admin</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleSwitch('/logistics', 'logistik@bbparfum.id')}
-                      className={`py-2 px-1 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-1 border transition ${
-                        pathname.startsWith('/logistics')
-                          ? 'bg-blue-600/20 border-blue-500 text-blue-400'
-                          : 'bg-slate-900 border-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <Boxes className="w-4 h-4" />
-                      <span>Logistik</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleSwitch('/cashier', 'kasir.kendal@bbparfum.id')}
-                      className={`py-2 px-1 rounded-lg text-xs font-semibold flex flex-col items-center justify-center gap-1 border transition ${
-                        pathname.startsWith('/cashier')
-                          ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                          : 'bg-slate-900 border-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <Receipt className="w-4 h-4" />
-                      <span>Kasir</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-800">
+            <div className="p-4 border-t border-[#1E293B] bg-[#0B101D]/70">
+              <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>Kendal, Jawa Tengah</span>
                 <span className="text-[#D4AF37] font-mono font-medium">v1.0.0</span>
               </div>
