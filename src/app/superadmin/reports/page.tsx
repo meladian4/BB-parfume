@@ -19,58 +19,47 @@ import {
   X,
 } from 'lucide-react';
 
-type DatePreset = 'ALL' | 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'THIS_MONTH' | 'LAST_MONTH' | 'THIS_YEAR' | 'CUSTOM';
+type FilterMode = 'MANUAL_DMY' | 'CUSTOM_RANGE' | 'ALL';
 
-const PRESET_OPTIONS: { id: DatePreset; label: string }[] = [
-  { id: 'TODAY', label: 'Hari Ini' },
-  { id: 'YESTERDAY', label: 'Kemarin' },
-  { id: 'LAST_7', label: '7 Hari Terakhir' },
-  { id: 'THIS_MONTH', label: 'Bulan Ini' },
-  { id: 'LAST_MONTH', label: 'Bulan Lalu' },
-  { id: 'THIS_YEAR', label: 'Tahun Ini' },
-  { id: 'ALL', label: 'Semua Waktu' },
-  { id: 'CUSTOM', label: 'Pilih Tanggal' },
+const MONTHS = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
 ];
 
-const formatDateLocal = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+const computeDateRangeFromManual = (day: string, month: string, year: string) => {
+  const y = year || String(new Date().getFullYear());
+  if (month === 'ALL') {
+    return {
+      start: `${y}-01-01`,
+      end: `${y}-12-31`,
+    };
+  }
+  const m = month || String(new Date().getMonth() + 1);
+  const paddedM = String(m).padStart(2, '0');
 
-const getTodayStr = () => formatDateLocal(new Date());
+  if (day === 'ALL') {
+    const lastDay = new Date(Number(y), Number(m), 0).getDate();
+    return {
+      start: `${y}-${paddedM}-01`,
+      end: `${y}-${paddedM}-${String(lastDay).padStart(2, '0')}`,
+    };
+  }
 
-const getYesterdayStr = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return formatDateLocal(d);
-};
-
-const getLast7DaysStr = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 6);
-  return formatDateLocal(d);
-};
-
-const getMonthStartStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-};
-
-const getLastMonthRangeStr = () => {
-  const d = new Date();
-  const firstDay = new Date(d.getFullYear(), d.getMonth() - 1, 1);
-  const lastDay = new Date(d.getFullYear(), d.getMonth(), 0);
+  const paddedD = String(day).padStart(2, '0');
   return {
-    start: formatDateLocal(firstDay),
-    end: formatDateLocal(lastDay),
+    start: `${y}-${paddedM}-${paddedD}`,
+    end: `${y}-${paddedM}-${paddedD}`,
   };
-};
-
-const getYearStartStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-01-01`;
 };
 
 const formatDisplayDate = (dateStr: string) => {
@@ -87,73 +76,71 @@ const formatDisplayDate = (dateStr: string) => {
 export default function SuperAdminReportsPage() {
   const [stores, setStores] = useState<Store[]>([]);
   const [report, setReport] = useState<FinancialReportSummary | null>(null);
-  const [lowStockAlerts, setLowStockAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
   const [selectedStore, setSelectedStore] = useState<string>('');
-  const [datePreset, setDatePreset] = useState<DatePreset>('ALL');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  const [filterMode, setFilterMode] = useState<FilterMode>('MANUAL_DMY');
 
-  const handleSelectPreset = (preset: DatePreset) => {
-    setDatePreset(preset);
-    const today = getTodayStr();
+  const now = new Date();
+  const currentYear = String(now.getFullYear());
+  const currentMonth = String(now.getMonth() + 1);
 
-    switch (preset) {
-      case 'TODAY':
-        setStartDate(today);
-        setEndDate(today);
-        break;
-      case 'YESTERDAY': {
-        const yest = getYesterdayStr();
-        setStartDate(yest);
-        setEndDate(yest);
-        break;
-      }
-      case 'LAST_7':
-        setStartDate(getLast7DaysStr());
-        setEndDate(today);
-        break;
-      case 'THIS_MONTH':
-        setStartDate(getMonthStartStr());
-        setEndDate(today);
-        break;
-      case 'LAST_MONTH': {
-        const { start, end } = getLastMonthRangeStr();
-        setStartDate(start);
-        setEndDate(end);
-        break;
-      }
-      case 'THIS_YEAR':
-        setStartDate(getYearStartStr());
-        setEndDate(today);
-        break;
-      case 'ALL':
-        setStartDate('');
-        setEndDate('');
-        break;
-      case 'CUSTOM':
-        if (!startDate && !endDate) {
-          setStartDate(getMonthStartStr());
-          setEndDate(today);
-        }
-        break;
-    }
+  const [manualDay, setManualDay] = useState<string>('ALL'); // 'ALL' or '1'..'31'
+  const [manualMonth, setManualMonth] = useState<string>(currentMonth);
+  const [manualYear, setManualYear] = useState<string>(currentYear);
+
+  const initialRange = computeDateRangeFromManual('ALL', currentMonth, currentYear);
+  const [startDate, setStartDate] = useState<string>(initialRange.start);
+  const [endDate, setEndDate] = useState<string>(initialRange.end);
+
+  const maxDaysInMonth = useMemo(() => {
+    if (manualMonth === 'ALL') return 31;
+    const y = parseInt(manualYear, 10) || new Date().getFullYear();
+    const m = parseInt(manualMonth, 10) || 1;
+    return new Date(y, m, 0).getDate();
+  }, [manualYear, manualMonth]);
+
+  const handleManualChange = (newDay: string, newMonth: string, newYear: string) => {
+    setManualDay(newDay);
+    setManualMonth(newMonth);
+    setManualYear(newYear);
+    setFilterMode('MANUAL_DMY');
+    const { start, end } = computeDateRangeFromManual(newDay, newMonth, newYear);
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  const handleSetAllTime = () => {
+    setFilterMode('ALL');
+    setStartDate('');
+    setEndDate('');
   };
 
   const activePeriodLabel = useMemo(() => {
-    if (!startDate && !endDate) return 'Semua Waktu (Sepanjang Masa)';
-    if (startDate && endDate) {
-      if (startDate === endDate) {
-        return `${formatDisplayDate(startDate)} (${datePreset === 'TODAY' ? 'Hari Ini' : datePreset === 'YESTERDAY' ? 'Kemarin' : '1 Hari'})`;
+    if (filterMode === 'ALL' || (!startDate && !endDate)) {
+      return 'Semua Waktu (Sepanjang Masa)';
+    }
+    if (filterMode === 'MANUAL_DMY') {
+      const yearStr = manualYear;
+      if (manualMonth === 'ALL') {
+        return `Tahun ${yearStr} (1 Tahun Penuh)`;
       }
+      const monthName = MONTHS[Number(manualMonth) - 1] || '';
+      if (manualDay === 'ALL') {
+        return `${monthName} ${yearStr} (1 Bulan Penuh)`;
+      }
+      return `${manualDay} ${monthName} ${yearStr}`;
+    }
+    // CUSTOM_RANGE
+    if (startDate && endDate) {
+      if (startDate === endDate) return formatDisplayDate(startDate);
       return `${formatDisplayDate(startDate)} — ${formatDisplayDate(endDate)}`;
     }
     if (startDate) return `Sejak ${formatDisplayDate(startDate)}`;
     if (endDate) return `Hingga ${formatDisplayDate(endDate)}`;
     return 'Semua Waktu';
-  }, [startDate, endDate, datePreset]);
+  }, [filterMode, startDate, endDate, manualDay, manualMonth, manualYear]);
 
   const loadData = async () => {
     try {
@@ -175,18 +162,10 @@ export default function SuperAdminReportsPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const [reportRes, alertsRes] = await Promise.all([
-        fetch(`/api/reports/financial?${params.toString()}`).then((r) => r.json()),
-        fetch(`/api/reports/low-stock${selectedStore ? `?store_id=${selectedStore}` : ''}`).then((r) =>
-          r.json()
-        ),
-      ]);
+      const reportRes = await fetch(`/api/reports/financial?${params.toString()}`).then((r) => r.json());
 
       if (reportRes.success) {
         setReport(reportRes.report);
-      }
-      if (alertsRes.success) {
-        setLowStockAlerts(alertsRes.alerts || []);
       }
     } catch (err) {
       console.error('Gagal mengambil laporan finansial:', err);
@@ -265,78 +244,188 @@ export default function SuperAdminReportsPage() {
           </div>
         </div>
 
-        {/* Row 2: Rentang Waktu (Presets & Custom Date Picker) */}
-        <div className="pt-3 border-t border-neutral-800/80 flex flex-col space-y-3">
+        {/* Row 2: Manual Customize (Tanggal, Bulan & Tahun) */}
+        <div className="pt-3 border-t border-neutral-800/80 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[11px] font-semibold text-neutral-400 mr-1 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
-                Rentang Waktu:
-              </span>
-              {PRESET_OPTIONS.map((preset) => {
-                const isActive = datePreset === preset.id;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectPreset(preset.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      isActive
-                        ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-md ring-1 ring-[#D4AF37]'
-                        : 'bg-[#181C24] text-neutral-300 hover:text-white hover:bg-[#222734] border border-neutral-700/70'
-                    }`}
-                  >
-                    {preset.label}
-                  </button>
-                );
-              })}
-            </div>
+            <span className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-[#D4AF37]" />
+              Pilihan Waktu (Pilih Manual):
+            </span>
 
-            {/* Quick reset button if any date filter is applied */}
-            {(startDate || endDate || datePreset !== 'ALL') && (
+            {/* Toggle Modes: Manual DMY / Rentang Bebas / Semua */}
+            <div className="flex items-center gap-1.5 bg-[#181C24] p-1 rounded-xl border border-neutral-800">
               <button
                 type="button"
-                onClick={() => handleSelectPreset('ALL')}
-                className="text-[11px] text-neutral-400 hover:text-amber-400 flex items-center gap-1 underline self-start sm:self-auto transition-colors"
+                onClick={() => {
+                  setFilterMode('MANUAL_DMY');
+                  handleManualChange(manualDay, manualMonth, manualYear);
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  filterMode === 'MANUAL_DMY'
+                    ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
               >
-                <X className="w-3 h-3" />
-                Reset ke Semua Waktu
+                🗓️ Pilih Tanggal / Bulan / Tahun
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => setFilterMode('CUSTOM_RANGE')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  filterMode === 'CUSTOM_RANGE'
+                    ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                📅 Rentang Tanggal Bebas
+              </button>
+              <button
+                type="button"
+                onClick={handleSetAllTime}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  filterMode === 'ALL'
+                    ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                🌐 Semua Waktu
+              </button>
+            </div>
           </div>
 
-          {/* Custom Date Pickers (Shown if CUSTOM is active) */}
-          {datePreset === 'CUSTOM' && (
-            <div className="bg-[#181C24] border border-neutral-700/80 rounded-xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              <span className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5 shrink-0">
-                <Filter className="w-3.5 h-3.5 text-[#D4AF37]" />
-                Kustom Rentang Tanggal:
-              </span>
-              <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="flex-1 flex items-center gap-2 bg-[#12151C] border border-neutral-700 rounded-lg px-2.5 py-1.5">
-                  <span className="text-[11px] text-neutral-400 shrink-0">Dari Tanggal:</span>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value);
-                      setDatePreset('CUSTOM');
-                    }}
-                    className="w-full bg-transparent text-xs text-white focus:outline-none"
-                  />
+          {/* Mode 1: MANUAL_DMY (Dropdown Tanggal, Bulan, Tahun secara Manual) */}
+          {filterMode === 'MANUAL_DMY' && (
+            <div className="bg-[#181C24] p-4 rounded-xl border border-neutral-800 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* 1. Tanggal */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
+                    Pilih Tanggal:
+                  </label>
+                  <select
+                    value={manualDay}
+                    onChange={(e) => handleManualChange(e.target.value, manualMonth, manualYear)}
+                    className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    <option value="ALL">Semua Tanggal (1 Bulan Penuh)</option>
+                    {Array.from({ length: maxDaysInMonth }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={String(d)}>
+                        Tanggal {d}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="flex-1 flex items-center gap-2 bg-[#12151C] border border-neutral-700 rounded-lg px-2.5 py-1.5">
-                  <span className="text-[11px] text-neutral-400 shrink-0">Sampai Tanggal:</span>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => {
-                      setEndDate(e.target.value);
-                      setDatePreset('CUSTOM');
-                    }}
-                    className="w-full bg-transparent text-xs text-white focus:outline-none"
-                  />
+
+                {/* 2. Bulan */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
+                    Pilih Bulan:
+                  </label>
+                  <select
+                    value={manualMonth}
+                    onChange={(e) => handleManualChange(manualDay, e.target.value, manualYear)}
+                    className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    <option value="ALL">Semua Bulan (1 Tahun Penuh)</option>
+                    {MONTHS.map((m, idx) => (
+                      <option key={idx + 1} value={String(idx + 1)}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* 3. Tahun */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
+                    Pilih Tahun:
+                  </label>
+                  <select
+                    value={manualYear}
+                    onChange={(e) => handleManualChange(manualDay, manualMonth, e.target.value)}
+                    className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
+                      <option key={y} value={String(y)}>
+                        Tahun {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick helper shortcuts */}
+              <div className="flex items-center gap-2 pt-2.5 border-t border-neutral-800/80 text-xs flex-wrap">
+                <span className="text-[11px] text-neutral-400">Pintasan Cepat:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    handleManualChange(String(d.getDate()), String(d.getMonth() + 1), String(d.getFullYear()));
+                  }}
+                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
+                >
+                  Hari Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    handleManualChange('ALL', String(d.getMonth() + 1), String(d.getFullYear()));
+                  }}
+                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
+                >
+                  Bulan Ini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    const lastM = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+                    handleManualChange('ALL', String(lastM.getMonth() + 1), String(lastM.getFullYear()));
+                  }}
+                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
+                >
+                  Bulan Lalu
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const d = new Date();
+                    handleManualChange('ALL', 'ALL', String(d.getFullYear()));
+                  }}
+                  className="px-2.5 py-1 rounded bg-[#12151C] hover:bg-[#222734] border border-neutral-700 text-neutral-200 text-xs"
+                >
+                  Tahun Ini
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Mode 2: CUSTOM_RANGE (Dari Tanggal s/d Sampai Tanggal Bebas) */}
+          {filterMode === 'CUSTOM_RANGE' && (
+            <div className="bg-[#181C24] p-4 rounded-xl border border-neutral-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
+                  Dari Tanggal:
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-neutral-300 mb-1.5">
+                  Sampai Tanggal:
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-[#12151C] border border-neutral-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                />
               </div>
             </div>
           )}
@@ -426,41 +515,22 @@ export default function SuperAdminReportsPage() {
       </div>
 
       {/* Nilai Persediaan Ritel Konsolidasian */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Card className="bg-[#12151C] border-neutral-800 p-5 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold tracking-wider text-neutral-400 uppercase">
-              Total Nilai Persediaan Fisik (Moving HPP)
-            </span>
-            <p className="text-2xl font-bold text-white mt-1">
-              {formatIDR(report?.total_inventory_value || 0)}
-            </p>
-            <p className="text-xs text-neutral-400 mt-1">
-              Dihitung dari seluruh saldo stok fisik dikali Moving Average HPP
-            </p>
-          </div>
-          <div className="p-3.5 bg-blue-950/40 border border-blue-800/50 rounded-xl text-blue-400">
-            <Boxes className="w-7 h-7" />
-          </div>
-        </Card>
-
-        <Card className="bg-[#12151C] border-neutral-800 p-5 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold tracking-wider text-neutral-400 uppercase">
-              Peringatan Stok Kritis (Under Minimum)
-            </span>
-            <p className="text-2xl font-bold text-amber-400 mt-1">
-              {lowStockAlerts.length} Varian Produk Menipis
-            </p>
-            <p className="text-xs text-neutral-400 mt-1">
-              Perlu dibuatkan permintaan mutasi gudang atau order supplier
-            </p>
-          </div>
-          <div className="p-3.5 bg-amber-950/40 border border-amber-800/50 rounded-xl text-amber-400">
-            <AlertTriangle className="w-7 h-7" />
-          </div>
-        </Card>
-      </div>
+      <Card className="bg-[#12151C] border-neutral-800 p-5 shadow-xl flex items-center justify-between">
+        <div>
+          <span className="text-xs font-semibold tracking-wider text-neutral-400 uppercase">
+            Total Nilai Persediaan Fisik (Moving HPP)
+          </span>
+          <p className="text-2xl font-bold text-white mt-1">
+            {formatIDR(report?.total_inventory_value || 0)}
+          </p>
+          <p className="text-xs text-neutral-400 mt-1">
+            Dihitung dari seluruh saldo stok fisik dikali Moving Average HPP di seluruh cabang toko & gudang Kendal
+          </p>
+        </div>
+        <div className="p-3.5 bg-blue-950/40 border border-blue-800/50 rounded-xl text-blue-400">
+          <Boxes className="w-7 h-7" />
+        </div>
+      </Card>
 
       {/* Tabel Perbandingan 3 Toko Cabang (Kendal Kota, Pegandon, Kaliwungu) */}
       <Card className="bg-[#12151C] border-neutral-800 overflow-hidden shadow-xl">
@@ -538,70 +608,6 @@ export default function SuperAdminReportsPage() {
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {/* Daftar Peringatan Stok Menipis */}
-      <Card className="bg-[#12151C] border-neutral-800 overflow-hidden shadow-xl">
-        <div className="p-5 border-b border-neutral-800 flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-lg text-white flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              Rincian Peringatan Stok Menipis (Di Bawah Minimum Buffer)
-            </h3>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              Diperlukan mutasi stok dari gudang Kendal atau pemesanan ulang ke supplier
-            </p>
-          </div>
-          <span className="text-xs text-neutral-400">{lowStockAlerts.length} produk</span>
-        </div>
-
-        {lowStockAlerts.length === 0 ? (
-          <div className="p-10 text-center text-emerald-400 flex flex-col items-center gap-2">
-            <CheckCircle2 className="w-8 h-8" />
-            <p className="font-medium">Seluruh stok cabang dalam batas aman di atas buffer minimum.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-neutral-300">
-              <thead className="bg-[#181C24] text-xs uppercase tracking-wider text-neutral-400 border-b border-neutral-800">
-                <tr>
-                  <th className="py-3 px-4">Kode SKU</th>
-                  <th className="py-3 px-4">Nama Produk Parfum</th>
-                  <th className="py-3 px-4">Lokasi Cabang</th>
-                  <th className="py-3 px-4 text-center">Stok Saat Ini</th>
-                  <th className="py-3 px-4 text-center">Batas Minimum</th>
-                  <th className="py-3 px-4 text-center">Defisit</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-800/60 font-mono text-xs">
-                {lowStockAlerts.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-neutral-800/30 transition-colors">
-                    <td className="py-3 px-4 text-neutral-400">{item.product.sku}</td>
-                    <td className="py-3 px-4 font-sans font-medium text-white">
-                      {item.product.name}
-                    </td>
-                    <td className="py-3 px-4 font-sans text-neutral-300">{item.store.name}</td>
-                    <td className="py-3 px-4 text-center font-bold text-red-400">
-                      {item.current_stock}
-                    </td>
-                    <td className="py-3 px-4 text-center text-neutral-300">
-                      {item.min_stock_alert}
-                    </td>
-                    <td className="py-3 px-4 text-center font-bold text-amber-400">
-                      -{item.deficit}
-                    </td>
-                    <td className="py-3 px-4 text-center font-sans">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-950/60 text-red-300 border border-red-800/50">
-                        Kritis
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </Card>
     </div>
   );
