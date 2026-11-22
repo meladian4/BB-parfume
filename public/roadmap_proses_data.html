@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roadmap Alur Proses Data — BB Parfum Premium Management</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    @media print {
+      body { background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+      .print-shadow-none { box-shadow: none !important; border-color: #cbd5e1 !important; }
+    }
+  </style>
+</head>
+<body class="bg-[#070A0F] text-slate-100 min-h-screen p-4 md:p-8 selection:bg-[#D4AF37] selection:text-black">
+  <div class="max-w-6xl mx-auto space-y-8">
+    
+    <!-- Top Action Bar -->
+    <header class="no-print bg-[#0E1420] border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30">DOKUMEN RESMI SISTEM</span>
+          <span class="text-xs text-slate-400">• Multi-Store Kendal Network</span>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-white">Roadmap Alur Proses Data dari Awal sampai Akhir</h1>
+        <p class="text-xs text-slate-400 mt-1">Siklus lengkap data: Pengadaan ➔ Mutasi Gudang ➔ Kasir POS ➔ Loyalty Member ➔ Laba Rugi ➔ Backup Snapshot</p>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <a href="/Roadmap_Proses_Data_BB_Parfum.pdf" download class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#D4AF37] to-[#E5C365] text-black font-extrabold text-xs rounded-xl shadow-md shadow-[#D4AF37]/20 hover:brightness-110 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>Unduh File PDF Resmi</span>
+        </a>
+        <button onclick="window.print()" class="px-3 py-2 bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs text-slate-200 rounded-xl transition">
+          🖨️ Cetak
+        </button>
+      </div>
+    </header>
+
+    <!-- Topologi 4 Lokasi Kendal -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-gradient-to-b from-blue-950/40 to-slate-900/80 border border-blue-500/40 rounded-xl p-4">
+        <div class="text-[12px] font-mono text-blue-400 font-bold">WH-KENDAL-01</div>
+        <h3 class="text-white font-bold text-sm mt-1">Gudang Distribusi Pusat</h3>
+        <p class="text-[12px] text-slate-400 mt-1">Penerimaan PO Supplier, hitung Moving Avg HPP, simpan buffer stock.</p>
+      </div>
+      <div class="bg-gradient-to-b from-amber-950/40 to-slate-900/80 border border-amber-500/40 rounded-xl p-4">
+        <div class="text-[12px] font-mono text-amber-400 font-bold">STORE-KDL-01</div>
+        <h3 class="text-white font-bold text-sm mt-1">Cabang Kendal Kota</h3>
+        <p class="text-[12px] text-slate-400 mt-1">Jl. Pemuda No. 42 (Pusat Kota). Volume penjualan ritel tertinggi.</p>
+      </div>
+      <div class="bg-gradient-to-b from-emerald-950/40 to-slate-900/80 border border-emerald-500/40 rounded-xl p-4">
+        <div class="text-[12px] font-mono text-emerald-400 font-bold">STORE-PGD-02</div>
+        <h3 class="text-white font-bold text-sm mt-1">Cabang Pegandon</h3>
+        <p class="text-[12px] text-slate-400 mt-1">Jl. Raya Pegandon No. 18. Konsumen area pasar & pemukiman.</p>
+      </div>
+      <div class="bg-gradient-to-b from-purple-950/40 to-slate-900/80 border border-purple-500/40 rounded-xl p-4">
+        <div class="text-[12px] font-mono text-purple-400 font-bold">STORE-KLW-03</div>
+        <h3 class="text-white font-bold text-sm mt-1">Cabang Kaliwungu</h3>
+        <p class="text-[12px] text-slate-400 mt-1">Jl. Raya Kaliwungu No. 88. Koridor mobilitas Kendal-Semarang.</p>
+      </div>
+    </div>
+
+    <!-- 7 FASE END-TO-END DATA PROCESS PIPELINE -->
+    <div class="space-y-6">
+      
+      <!-- FASE 1 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 font-extrabold flex items-center justify-center text-sm border border-blue-500/30">1</span>
+          <div>
+            <div class="text-[12px] text-blue-400 font-bold uppercase tracking-wider">FASE 1: HULU & PENGADAAN</div>
+            <h2 class="text-lg font-bold text-white">Purchase Order (PO) Supplier & Kalkulasi HPP Otomatis</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-blue-950 text-blue-300 border border-blue-800 text-xs font-mono">GUDANG PUSAT</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">INPUT DATA:</span>
+            <p class="text-slate-300">Data Supplier, No. Faktur Pembelian, Daftar SKU Botol/Bibit Parfum, Kuantitas Masuk, dan Harga Beli Satuan Baru.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">LOGIKA SISTEM:</span>
+            <p class="text-slate-300">Sistem mengkalkulasi <strong>Moving Average Cost</strong>:<br/>
+            <code>HPP Baru = (Qty Lama × HPP Lama + Qty Masuk × Harga Baru) ÷ Qty Total</code></p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">HASIL & EFEK DATA:</span>
+            <p class="text-slate-300">Saldo stok fisik Gudang bertambah, HPP produk terupdate proporsional, dan mutasi <code>PURCHASE_RECEIPT</code> tercatat di kartu stok.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 2 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 font-extrabold flex items-center justify-center text-sm border border-amber-500/30">2</span>
+          <div>
+            <div class="text-[12px] text-amber-400 font-bold uppercase tracking-wider">FASE 2: DISTRIBUSI & MUTASI CABANG</div>
+            <h2 class="text-lg font-bold text-white">Transfer Stok Tertutup (Gudang ➔ 3 Cabang Toko)</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-amber-950 text-amber-300 border border-amber-800 text-xs font-mono">STATUS: IN_TRANSIT</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">INPUT DATA:</span>
+            <p class="text-slate-300">Cabang Tujuan (Kendal Kota / Pegandon / Kaliwungu), Daftar SKU Varian & Jumlah yang diminta, Catatan Surat Jalan.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">LOGIKA SISTEM:</span>
+            <p class="text-slate-300">1. Draft transfer dibuat: <code>PENDING_SHIPMENT</code>.<br/>2. Gudang klik Kirim ➔ Status berubah <code>IN_TRANSIT</code> (Stok Gudang langsung dipotong).<br/>3. Cabang klik <code>Konfirmasi Terima</code>.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">HASIL & EFEK DATA:</span>
+            <p class="text-slate-300">Stok toko bertambah, HPP Gudang tersalin proporsional ke Toko, status mutasi selesai <code>RECEIVED</code>. Tidak ada celah selisih di jalan.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 3 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 font-extrabold flex items-center justify-center text-sm border border-emerald-500/30">3</span>
+          <div>
+            <div class="text-[12px] text-emerald-400 font-bold uppercase tracking-wider">FASE 3: OPERASIONAL KASIR (AWAL SHIFT)</div>
+            <h2 class="text-lg font-bold text-white">Login Petugas Kasir (Store-Locking) & Buka Sesi Modal Laci</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 text-xs font-mono">STORE LOCKING</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">INPUT DATA:</span>
+            <p class="text-slate-300">Kredensial login kasir, Toko Cabang Penugasan, dan Nominal Uang Modal Awal Laci Kasir (misal Rp 300.000).</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">LOGIKA SISTEM:</span>
+            <p class="text-slate-300">Sistem memvalidasi peran kasir dan mengunci akses (*Store Locking*). Kasir dilarang membuka cabang lain. Dibuat record <code>CashSession</code> status <code>OPEN</code>.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">HASIL & EFEK DATA:</span>
+            <p class="text-slate-300">Sesi kasir aktif ber-ID unik. Laci kas tercatat resmi dengan modal awal Rp 300.000. Audit log <code>CASH_SESSION_OPENED</code> terbit.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 4 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 font-extrabold flex items-center justify-center text-sm border border-purple-500/30">4</span>
+          <div>
+            <div class="text-[12px] text-purple-400 font-bold uppercase tracking-wider">FASE 4: PENJUALAN RITEL & POTONG STOK</div>
+            <h2 class="text-lg font-bold text-white">POS Checkout, Snapshot HPP & Diskon Member Loyalty</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-purple-950 text-purple-300 border border-purple-800 text-xs font-mono">TRANSAKSI ATOMIK</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">INPUT DATA:</span>
+            <p class="text-slate-300">Scan Barcode Botol Parfum (30ml/50ml/100ml), No HP Member, Pilihan Tukar Poin Diskon, Metode Bayar (Tunai/QRIS).</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">LOGIKA SISTEM:</span>
+            <p class="text-slate-300">Sistem mengunci Idempotency Key (anti double billing), memotong stok cabang seketika, dan mengunci <strong>Snapshot HPP riil</strong> saat barang terjual.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">HASIL & EFEK DATA:</span>
+            <p class="text-slate-300">Invoice Penjualan terbit, Poin Member bertambah (+1 pt per Rp 10rb), stok cabang terpotong, struk thermal 58mm/80mm tercetak.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 5 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 font-extrabold flex items-center justify-center text-sm border border-teal-500/30">5</span>
+          <div>
+            <div class="text-[12px] text-teal-400 font-bold uppercase tracking-wider">FASE 5: AKHIR SHIFT KASIR</div>
+            <h2 class="text-lg font-bold text-white">Tutup Sesi & Rekonsiliasi Uang Fisik Laci Kasir</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-teal-950 text-teal-300 border border-teal-800 text-xs font-mono">REKONSILIASI KAS</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">INPUT DATA:</span>
+            <p class="text-slate-300">Kasir menghitung seluruh uang tunai fisik yang ada di laci kas saat pergantian shift / tutup toko.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">LOGIKA SISTEM:</span>
+            <p class="text-slate-300">Sistem membandingkan:<br/>
+            <code>Expected Cash = Modal Awal + Total Penjualan Tunai</code><br/>
+            dengan <code>Actual Cash (Uang Fisik Kasir)</code>.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">HASIL & EFEK DATA:</span>
+            <p class="text-slate-300">Laporan Sesi Kasir diterbitkan. Jika ada selisih uang, langsung tercatat sebagai beban kasir shift tersebut (Audit Target: Selisih Rp 0).</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 6 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-[#D4AF37]/20 text-[#D4AF37] font-extrabold flex items-center justify-center text-sm border border-[#D4AF37]/30">6</span>
+          <div>
+            <div class="text-[12px] text-[#D4AF37] font-bold uppercase tracking-wider">FASE 6: KEUANGAN & LABA RUGI CABANG</div>
+            <h2 class="text-lg font-bold text-white">Biaya Operasional (OPEX) & Laporan Finansial Real-Time</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30 text-xs font-mono">P&L DASHBOARD</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">INPUT DATA:</span>
+            <p class="text-slate-300">Biaya Sewa Ruko Cabang, Tagihan Listrik & WiFi Toko, Gaji Karyawan, Pembelian Pita & Paper Bag Mewah.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">RUMUS 3 LAPISAN OTOMATIS:</span>
+            <p class="text-slate-300">
+              1. <code>Net Sales = Gross Sales - Diskon Member</code><br/>
+              2. <code>Gross Profit = Net Sales - COGS (HPP Snapshot)</code><br/>
+              3. <code>Net Operating Profit = Gross Profit - Biaya OPEX</code>
+            </p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">HASIL & EFEK DATA:</span>
+            <p class="text-slate-300">Laporan Laba Rugi Real-Time per Toko Cabang (Kendal Kota, Pegandon, Kaliwungu) dan Laba Bersih Konsolidasian Seluruh Kendal.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- FASE 7 -->
+      <div class="bg-[#0E1420] border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-400 font-extrabold flex items-center justify-center text-sm border border-rose-500/30">7</span>
+          <div>
+            <div class="text-[12px] text-rose-400 font-bold uppercase tracking-wider">FASE 7: TATA KELOLA & KEAMANAN SISTEM</div>
+            <h2 class="text-lg font-bold text-white">Matriks Hak Akses, Audit Trail Abadi & 1-Click Backup Snapshot</h2>
+          </div>
+          <span class="ml-auto px-2.5 py-1 rounded bg-rose-950 text-rose-300 border border-rose-800 text-xs font-mono">DISASTER RECOVERY</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-slate-400 font-bold block mb-1">PENEGAKAN LARANGAN:</span>
+            <p class="text-slate-300">Kasir dilarang lihat laba rugi/HPP dan dilarang akses gudang. Logistik dilarang jualan ritel. Super Admin pegang kendali reset password.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-[#D4AF37] font-bold block mb-1">AUDIT TRAIL OTOMATIS:</span>
+            <p class="text-slate-300">Semua aktivitas kritis (reset password, kirim mutasi, catat biaya) tersimpan permanen lengkap dengan user ID dan timestamp WIB.</p>
+          </div>
+          <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+            <span class="text-emerald-400 font-bold block mb-1">1-CLICK BACKUP SNAPSHOT:</span>
+            <p class="text-slate-300">Ekspor instan seluruh database ke file JSON aman (Toko, Stok, POS, Finansial, Audit Log) untuk perlindungan dari data loss.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Action -->
+    <footer class="no-print p-6 bg-[#0E1420] border border-slate-800 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div>
+        <span class="text-white font-bold">BB Parfum Premium Management System</span> • Terverifikasi Lolos Acceptance Test 100%
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="http://localhost:3005" target="_blank" class="text-[#D4AF37] hover:underline font-bold">Buka Dashboard Aplikasi ↗</a>
+        <a href="http://localhost:3005/presentasi" target="_blank" class="text-emerald-400 hover:underline font-bold">Buka Slide PPT Klien ↗</a>
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>

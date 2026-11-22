@@ -1,0 +1,42 @@
+{
+  "name": "bb-parfum-premium",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3005 -H 0.0.0.0",
+    "build": "next build",
+    "start": "next start -p 3005 -H 0.0.0.0",
+    "lint": "next lint",
+    "test": "npm run test:all",
+    "test:stage1": "npx tsx tests/stage1_auth_foundation.test.ts",
+    "test:stage2": "npx tsx tests/stage2_inventory_balances.test.ts",
+    "test:stage3": "npx tsx tests/stage3_purchases_transfers.test.ts",
+    "test:stage4": "npx tsx tests/stage4_pos_checkout_print.test.ts",
+    "test:stage5": "npx tsx tests/stage5_member_loyalty.test.ts",
+    "test:stage6": "npx tsx tests/stage6_finance_reports.test.ts",
+    "test:stage7": "npx tsx tests/stage7_reconciliation_audit.test.ts",
+    "test:stage8": "npx tsx tests/stage8_void_sales.test.ts",
+    "test:all": "npx tsx tests/stage1_auth_foundation.test.ts && npx tsx tests/stage2_inventory_balances.test.ts && npx tsx tests/stage3_purchases_transfers.test.ts && npx tsx tests/stage4_pos_checkout_print.test.ts && npx tsx tests/stage5_member_loyalty.test.ts && npx tsx tests/stage6_finance_reports.test.ts && npx tsx tests/stage7_reconciliation_audit.test.ts && npx tsx tests/stage8_void_sales.test.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.5.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.446.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "dotenv": "^16.4.5",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
