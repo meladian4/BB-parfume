@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { formatDateTimeJakarta } from '@/lib/formatters';
+import { formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { BBLogo } from '@/components/ui/BBLogo';
 import {
   Truck,
@@ -382,7 +382,7 @@ export default function SuperAdminTransfersApprovalPage() {
                             <div key={it.id} className="text-[11px] text-slate-300 flex items-center justify-between gap-3">
                               <span>{it.product?.name}</span>
                               <span className="font-bold font-mono text-white">
-                                {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                                {it.quantity} {formatProductUnit(it.product)}
                               </span>
                             </div>
                           ))}

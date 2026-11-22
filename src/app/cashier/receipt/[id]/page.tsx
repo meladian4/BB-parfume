@@ -3,7 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { Sale } from '@/types/domain';
-import { formatIDR, formatDateTimeJakarta } from '@/lib/formatters';
+import { formatIDR, formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { Printer, ArrowLeft, Bluetooth } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { printReceiptViaBluetooth } from '@/lib/bluetooth-printer';
@@ -191,7 +191,7 @@ function ReceiptPrintContent() {
             <span>Takaran</span>
           </div>
           {sale.items?.map((item) => {
-            const unit = item.product?.unit_name || (item.product?.product_type === 'BIBIT' ? 'ml' : 'pcs');
+            const unit = formatProductUnit(item.product);
             return (
               <div key={item.id} className="flex justify-between text-[10px]">
                 <span className="font-semibold truncate max-w-[70%]">{item.product?.name}</span>

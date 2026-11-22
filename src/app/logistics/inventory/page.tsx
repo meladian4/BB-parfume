@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { formatIDR, formatDateTimeJakarta } from '@/lib/formatters';
+import { formatIDR, formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import {
   Boxes,
   Search,
@@ -72,7 +72,7 @@ function InventoryPageContent() {
   };
 
   const getUnit = (prod?: any) => {
-    return prod?.unit_name || (prod?.product_type === 'BIBIT' || prod?.product_type === 'PELARUT' ? 'ml' : 'botol');
+    return formatProductUnit(prod);
   };
 
   const filteredBalances = balances.filter((b) => {

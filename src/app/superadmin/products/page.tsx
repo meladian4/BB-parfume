@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { formatIDR } from '@/lib/formatters';
+import { formatIDR, formatProductUnit } from '@/lib/formatters';
 import Link from 'next/link';
 import { BBLogo } from '@/components/ui/BBLogo';
 import {
@@ -425,14 +425,14 @@ export default function ProductsPage() {
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 uppercase">
-                          {p.unit_name || (p.product_type === 'BIBIT' ? 'ml' : 'botol')}
+                          {formatProductUnit(p)}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-emerald-400 text-sm">
                         {p.base_price > 0 ? (
                           <span>
                             {formatIDR(p.base_price)}
-                            {p.product_type === 'BIBIT' && <span className="text-[10px] text-slate-400 font-normal"> /ml</span>}
+                            <span className="text-[10px] text-slate-400 font-normal"> /{formatProductUnit(p)}</span>
                           </span>
                         ) : (
                           <span className="text-slate-500 font-normal text-xs">Paket Racik</span>
@@ -444,7 +444,7 @@ export default function ProductsPage() {
                             {getTotalStock(p.id).toLocaleString('id-ID')}
                           </span>
                           <span className="text-xs text-slate-400 font-normal">
-                            {p.unit_name || (p.product_type === 'BIBIT' ? 'ml' : 'botol')}
+                            {formatProductUnit(p)}
                           </span>
                         </div>
                       </td>
@@ -549,7 +549,7 @@ export default function ProductsPage() {
                 type="button"
                 onClick={() => {
                   setProductType('READY_TO_WEAR');
-                  setUnitName('botol');
+                  setUnitName('pcs');
                   setScentType('Extrait de Parfum');
                   setIsBlendable(false);
                 }}
@@ -627,9 +627,8 @@ export default function ProductsPage() {
                 onChange={(e) => setUnitName(e.target.value)}
                 className="w-full bg-[#162036] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-[#D4AF37]"
               >
-                <option value="ml">ml (Mililiter - Bibit/Pelarut)</option>
-                <option value="botol">botol (Botol Jadi)</option>
-                <option value="pcs">pcs (Kemasan / Botol Kosong)</option>
+                <option value="pcs">pcs (Botol Kemasan / Siap Pakai)</option>
+                <option value="ml">ml (Mililiter - Bibit / Pelarut)</option>
                 <option value="gram">gram</option>
               </select>
               <p className="text-[10px] text-slate-500 mt-1">

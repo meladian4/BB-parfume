@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { formatIDR, formatDateTimeJakarta } from '@/lib/formatters';
+import { formatIDR, formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { BBLogo } from '@/components/ui/BBLogo';
 import {
   Product,
@@ -382,7 +382,7 @@ export default function CashierPOSPage() {
     const stockAvailable = inventoryMap[product.id] || 0;
     const existingIndex = cart.findIndex((item) => item.product.id === product.id);
     const currentQtyInCart = existingIndex > -1 ? cart[existingIndex].quantity : 0;
-    const unit = product.unit_name || (product.product_type === 'BIBIT' ? 'ml' : 'botol');
+    const unit = formatProductUnit(product);
 
     if (currentQtyInCart + qtyToAdd > stockAvailable) {
       alert(`Stok "${product.name}" tidak mencukupi di cabang ini (Tersedia: ${stockAvailable} ${unit}, Diminta: ${currentQtyInCart + qtyToAdd} ${unit}).`);
@@ -418,7 +418,7 @@ export default function CashierPOSPage() {
   const setExactQuantity = (productId: string, exactQty: number) => {
     const stockAvailable = inventoryMap[productId] || 0;
     const item = cart.find((c) => c.product.id === productId);
-    const unit = item?.product.unit_name || (item?.product.product_type === 'BIBIT' ? 'ml' : 'botol');
+    const unit = formatProductUnit(item?.product);
 
     if (exactQty > stockAvailable) {
       alert(`Stok maksimal yang tersedia di cabang ini adalah ${stockAvailable} ${unit}.`);
@@ -438,7 +438,7 @@ export default function CashierPOSPage() {
     const num = clean === '' ? 0 : parseInt(clean, 10);
     const stockAvailable = inventoryMap[productId] || 9999;
     const item = cart.find((c) => c.product.id === productId);
-    const unit = item?.product.unit_name || (item?.product.product_type === 'BIBIT' ? 'ml' : 'botol');
+    const unit = formatProductUnit(item?.product);
 
     if (num > stockAvailable) {
       alert(`Stok maksimal yang tersedia di cabang ini adalah ${stockAvailable} ${unit}.`);
@@ -464,7 +464,7 @@ export default function CashierPOSPage() {
   const updateQuantity = (productId: string, delta: number) => {
     const stockAvailable = inventoryMap[productId] || 0;
     const item = cart.find((c) => c.product.id === productId);
-    const unit = item?.product.unit_name || (item?.product.product_type === 'BIBIT' ? 'ml' : 'botol');
+    const unit = formatProductUnit(item?.product);
 
     setCart((prev) =>
       prev
@@ -938,7 +938,7 @@ export default function CashierPOSPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3.5">
                 {filteredProducts.map((p) => {
                   const stock = inventoryMap[p.id] ?? 0;
-                  const unit = p.unit_name || (p.product_type === 'BIBIT' ? 'ml' : 'botol');
+                  const unit = formatProductUnit(p);
 
                   return (
                     <div
@@ -995,7 +995,7 @@ export default function CashierPOSPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-[10px] text-slate-400">
-                              {p.product_type === 'BIBIT' ? 'Per ml' : `${p.size_ml} ml`}
+                              {p.product_type === 'BIBIT' || p.product_type === 'PELARUT' ? 'Per ml' : `${p.size_ml} ml`}
                             </p>
                             <p className="text-sm font-bold text-[#D4AF37]">
                               {formatIDR(p.base_price)}
@@ -1196,7 +1196,7 @@ export default function CashierPOSPage() {
               {/* Cart Items List */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {cart.map((item) => {
-                  const unit = item.product.unit_name || (item.product.product_type === 'BIBIT' ? 'ml' : 'btl');
+                  const unit = formatProductUnit(item.product);
                   const unitPrice = item.custom_price !== undefined ? item.custom_price : item.product.base_price;
                   const itemSubtotal = unitPrice * item.quantity;
 
@@ -1821,7 +1821,7 @@ export default function CashierPOSPage() {
                   <span>Takaran</span>
                 </div>
                 {completedSale?.items?.map((it) => {
-                  const unit = it.product?.unit_name || (it.product?.product_type === 'BIBIT' ? 'ml' : 'pcs');
+                  const unit = formatProductUnit(it.product);
                   return (
                     <div key={it.id} className="flex justify-between text-[10px]">
                       <span className="font-semibold truncate max-w-[70%]">{it.product?.name}</span>

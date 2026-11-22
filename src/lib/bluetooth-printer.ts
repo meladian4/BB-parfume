@@ -4,6 +4,8 @@
  * Kompatibel dengan printer thermal RPP02N, Panda, Iware, VSC, Mini POS, Goulden, dll.
  */
 
+import { formatProductUnit } from '@/lib/formatters';
+
 // Konstanta Command ESC/POS
 const ESC = 0x1b;
 const GS = 0x1d;
@@ -209,7 +211,7 @@ export function buildReceiptEscPosData(
   if (Array.isArray(sale?.items)) {
     for (const it of sale.items) {
       const p = it.product;
-      const unit = p?.unit_name || (p?.product_type === 'BIBIT' ? 'ml' : 'pcs');
+      const unit = formatProductUnit(p);
       const name = p?.name || 'Produk';
       const qtyStr = `${it.quantity} ${unit}`;
       addText(formatTwoColumnLine(name, qtyStr, maxChars));

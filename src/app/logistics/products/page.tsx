@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { formatIDR } from '@/lib/formatters';
+import { formatIDR, formatProductUnit } from '@/lib/formatters';
 import { Product, InventoryBalance } from '@/types/domain';
 import {
   Package,
@@ -123,7 +123,7 @@ export default function LogisticsProductsPage() {
               </div>
               <div className="flex justify-between text-neutral-400">
                 <span>Total Stok Tersedia:</span>
-                <span className="text-emerald-400 font-bold">{getTotalStock(prod.id).toLocaleString('id-ID')} {prod.unit_name || 'botol'}</span>
+                <span className="text-emerald-400 font-bold">{getTotalStock(prod.id).toLocaleString('id-ID')} {formatProductUnit(prod)}</span>
               </div>
             </div>
 

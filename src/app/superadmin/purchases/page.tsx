@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { formatIDR, formatDateTimeJakarta } from '@/lib/formatters';
+import { formatIDR, formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { BBLogo } from '@/components/ui/BBLogo';
 import {
   PackagePlus,
@@ -88,8 +88,7 @@ export default function SuperAdminPurchasesPage() {
     setSelectedPurchaseToApprove(purchase);
     const items: EditablePurchaseItem[] = (purchase.items || []).map((it) => {
       const p = it.product;
-      const unitName =
-        p?.unit_name || (p?.product_type === 'BIBIT' || p?.product_type === 'PELARUT' ? 'ml' : 'botol');
+      const unitName = formatProductUnit(p);
       const qty = it.quantity || 1;
       const cost = it.unit_cost || 0;
       return {
@@ -494,7 +493,7 @@ export default function SuperAdminPurchasesPage() {
                             <div key={it.id} className="text-xs text-slate-300 flex items-center justify-between gap-2 bg-slate-900/90 px-2.5 py-1.5 rounded-lg">
                               <span className="truncate text-slate-200 font-medium">{it.product?.name}</span>
                               <span className="font-mono font-bold text-white shrink-0 bg-slate-800 px-2 py-0.5 rounded text-[11px]">
-                                {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                                {it.quantity} {formatProductUnit(it.product)}
                               </span>
                             </div>
                           ))}
@@ -606,7 +605,7 @@ export default function SuperAdminPurchasesPage() {
                                     {it.product?.name}
                                   </span>
                                   <span className="font-bold font-mono text-white shrink-0">
-                                    {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                                    {it.quantity} {formatProductUnit(it.product)}
                                   </span>
                                 </div>
                               ))}

@@ -77,3 +77,27 @@ export function formatTimeJakarta(dateString: string | Date | null | undefined):
     }).format(date) + ' WIB'
   );
 }
+
+/**
+ * Format standard unit for retail perfume products:
+ * - Bibit Parfum: 'ml'
+ * - Pelarut / Absolute / Campuran: 'ml'
+ * - Botol Kemasan: 'pcs'
+ * - Siap Pakai / Lainnya: 'pcs'
+ */
+export function formatProductUnit(
+  product?: { unit_name?: string; product_type?: string } | null
+): string {
+  if (!product) return 'pcs';
+  const type = product.product_type?.toUpperCase();
+  if (type === 'BIBIT' || type === 'PELARUT') {
+    return 'ml';
+  }
+  if (type === 'BOTOL' || type === 'READY_TO_WEAR') {
+    return 'pcs';
+  }
+  if (product.unit_name?.toLowerCase() === 'botol' || product.unit_name?.toLowerCase() === 'btl') {
+    return 'pcs';
+  }
+  return product.unit_name || 'pcs';
+}

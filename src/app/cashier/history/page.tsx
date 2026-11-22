@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { formatIDR, formatDateTimeJakarta } from '@/lib/formatters';
+import { formatIDR, formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { Sale, UserProfile, Store, PaymentMethod, SaleStatus } from '@/types/domain';
 import {
   ScrollText,
@@ -1194,7 +1194,7 @@ export default function CashierHistoryPage() {
                     <span>Takaran</span>
                   </div>
                   {receiptSaleToPrint.items?.map((it) => {
-                    const unit = it.product?.unit_name || (it.product?.product_type === 'BIBIT' ? 'ml' : 'pcs');
+                    const unit = formatProductUnit(it.product);
                     return (
                       <div key={it.id} className="flex justify-between text-[10px]">
                         <span className="font-semibold truncate max-w-[70%]">{it.product?.name}</span>

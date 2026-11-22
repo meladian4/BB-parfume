@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { formatDateTimeJakarta } from '@/lib/formatters';
+import { formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { BBLogo } from '@/components/ui/BBLogo';
 import { StockTransfer, Store, UserProfile } from '@/types/domain';
 import {
@@ -375,7 +375,7 @@ export default function CashierTransfersPage() {
                                 <div key={it.id} className="text-[11px] text-slate-300 flex items-center justify-between gap-3">
                                   <span>{it.product?.name}</span>
                                   <span className="font-bold font-mono text-white">
-                                    {it.quantity} {it.product?.unit_name || 'botol'}
+                                    {it.quantity} {formatProductUnit(it.product)}
                                   </span>
                                 </div>
                               ))}
@@ -519,7 +519,7 @@ export default function CashierTransfersPage() {
                       <tr key={it.id}>
                         <td className="py-2 px-3 font-medium">{it.product?.name}</td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-white">
-                          {it.quantity} {it.product?.unit_name || 'botol'}
+                          {it.quantity} {formatProductUnit(it.product)}
                         </td>
                       </tr>
                     ))}

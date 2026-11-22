@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
-import { formatDateTimeJakarta } from '@/lib/formatters';
+import { formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { BBLogo } from '@/components/ui/BBLogo';
 import {
   PackagePlus,
@@ -419,13 +419,13 @@ export default function LogisticsPurchasesPage() {
                         <div className="text-[11px] text-slate-400 mt-1.5 flex items-center justify-between">
                           <span>Stok Gudang:</span>
                           <strong className="text-rose-400 font-mono">
-                            {stock} {prod.unit_name || (prod.product_type === 'BIBIT' || prod.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                            {stock} {formatProductUnit(prod)}
                           </strong>
                         </div>
                         <div className="text-[11px] text-slate-400 flex items-center justify-between">
                           <span>Batas Buffer:</span>
                           <span className="font-mono text-slate-300">
-                            {prod.min_stock_alert} {prod.unit_name || (prod.product_type === 'BIBIT' || prod.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                            {prod.min_stock_alert} {formatProductUnit(prod)}
                           </span>
                         </div>
                       </div>
@@ -573,7 +573,7 @@ export default function LogisticsPurchasesPage() {
                             <div key={it.id} className="text-[11px] text-slate-300 flex items-center justify-between gap-3">
                               <span>{it.product?.name}</span>
                               <span className="font-bold font-mono text-white">
-                                {it.quantity} {it.product?.unit_name || (it.product?.product_type === 'BIBIT' || it.product?.product_type === 'PELARUT' ? 'ml' : 'botol')}
+                                {it.quantity} {formatProductUnit(it.product)}
                               </span>
                             </div>
                           ))}
@@ -758,7 +758,7 @@ export default function LogisticsPurchasesPage() {
                         ))}
                       </select>
                       <div className="text-[10px] text-slate-400 mt-1">
-                        <span>Total Stok Gudang: <strong className="text-emerald-400 font-semibold">{currentStock} {selectedProd?.unit_name || (selectedProd?.product_type === 'BIBIT' || selectedProd?.product_type === 'PELARUT' ? 'ml' : 'botol')}</strong></span>
+                        <span>Total Stok Gudang: <strong className="text-emerald-400 font-semibold">{currentStock} {formatProductUnit(selectedProd)}</strong></span>
                       </div>
                     </div>
 
@@ -773,7 +773,7 @@ export default function LogisticsPurchasesPage() {
                           onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
                           className="w-20 px-2 py-1 bg-[#0F172A] border border-slate-700 rounded-lg text-xs font-mono font-bold text-white text-center focus:outline-none focus:border-[#D4AF37]"
                         />
-                        <span className="text-slate-400 text-[11px]">{selectedProd?.unit_name || (selectedProd?.product_type === 'BIBIT' || selectedProd?.product_type === 'PELARUT' ? 'ml' : 'botol')}</span>
+                        <span className="text-slate-400 text-[11px]">{formatProductUnit(selectedProd)}</span>
                       </div>
 
                       {requestItems.length > 1 && (

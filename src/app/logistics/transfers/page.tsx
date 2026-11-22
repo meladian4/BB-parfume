@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
-import { formatDateTimeJakarta } from '@/lib/formatters';
+import { formatDateTimeJakarta, formatProductUnit } from '@/lib/formatters';
 import { BBLogo } from '@/components/ui/BBLogo';
 import {
   Truck,
@@ -422,7 +422,7 @@ export default function TransfersPage() {
                             <div key={it.id} className="text-[11px] text-slate-300 flex items-center justify-between gap-3">
                               <span>{it.product?.name}</span>
                               <span className="font-bold font-mono text-white">
-                                {it.quantity} {it.product?.unit_name || 'botol'}
+                                {it.quantity} {formatProductUnit(it.product)}
                               </span>
                             </div>
                           ))}
