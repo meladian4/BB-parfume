@@ -66,13 +66,45 @@ export default function CashierPOSPage() {
   const router = useRouter();
 
   // State User & Cabang Kasir
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [store, setStore] = useState<Store | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const u = localStorage.getItem('bb_current_user');
+        if (u) return JSON.parse(u);
+      } catch {}
+    }
+    return null;
+  });
+  const [store, setStore] = useState<Store | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const s = localStorage.getItem('bb_pos_store_cache');
+        if (s) return JSON.parse(s);
+      } catch {}
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('bb_pos_products_cache');
+        if (cached && JSON.parse(cached).length > 0) return false;
+      } catch {}
+    }
+    return true;
+  });
   const [incomingTransfersCount, setIncomingTransfersCount] = useState<number>(0);
 
   // State Sesi Kasir
-  const [session, setSession] = useState<CashSession | null>(null);
+  const [session, setSession] = useState<CashSession | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const s = localStorage.getItem('bb_pos_session_cache');
+        if (s) return JSON.parse(s);
+      } catch {}
+    }
+    return null;
+  });
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [sessionAction, setSessionAction] = useState<'OPEN' | 'CLOSE'>('OPEN');
   const [availableCash, setAvailableCash] = useState<number>(0);
@@ -81,9 +113,25 @@ export default function CashierPOSPage() {
   const [sessionNotes, setSessionNotes] = useState<string>('');
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
 
-  // State Katalog Produk & Stok Toko
-  const [products, setProducts] = useState<Product[]>([]);
-  const [inventoryMap, setInventoryMap] = useState<Record<string, number>>({});
+  // State Katalog Produk & Stok Toko (Instant Cache-First)
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('bb_pos_products_cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return [];
+  });
+  const [inventoryMap, setInventoryMap] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('bb_pos_inventory_cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return {};
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -128,94 +176,103 @@ export default function CashierPOSPage() {
 
   const barcodeInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Inisialisasi Data User & Sesi
-  const loadInitialData = async () => {
+  // 1. Inisialisasi Data User & Sesi secara Paralel (Ultra Fast / Instant Load)
+  const loadInitialData = async (isSilent = false) => {
     try {
-      setLoading(true);
-
-      // Ambil profile kasir
-      const userRes = await fetch('/api/users/me');
-      if (!userRes.ok) throw new Error('Gagal memuat profil pengguna.');
-      const userData = await userRes.json();
-      setUser(userData.user);
-
-      let storeId = userData.user.assigned_store_id;
-
-      // Ambil detail cabang kasir (jika Super Admin, default ke Toko Cabang Retail Kendal)
-      if (storeId) {
-        const storeRes = await fetch(`/api/stores/${storeId}`);
-        if (storeRes.ok) {
-          const sData = await storeRes.json();
-          setStore(sData.store);
-        }
-      } else {
-        const storesRes = await fetch('/api/stores');
-        if (storesRes.ok) {
-          const storesData = await storesRes.json();
-          const list = storesData.stores || storesData.data || [];
-          const defaultStore = list.find((s: any) => s.type === 'STORE') || list[0];
-          if (defaultStore) {
-            storeId = defaultStore.id;
-            setStore(defaultStore);
-          }
-        }
+      if (!isSilent && products.length === 0) {
+        setLoading(true);
       }
 
-      // Ambil status sesi kasir saat ini
-      const sessRes = await fetch('/api/pos/session');
-      if (sessRes.ok) {
-        const sessData = await sessRes.json();
-        setSession(sessData.session || null);
-        if (typeof sessData.available_cash === 'number') {
-          setAvailableCash(sessData.available_cash);
-          if (!sessData.session) {
-            setOpeningCashInput(sessData.available_cash.toString());
-          }
-        }
-      }
-
-      // Ambil konfigurasi loyalty
-      try {
-        const cfgRes = await fetch('/api/loyalty/config').then((r) => r.json());
-        if (cfgRes?.config) setLoyaltyConfig(cfgRes.config);
-      } catch (e) {
-        console.error('Failed to load loyalty config:', e);
-      }
-
-      // Ambil notifikasi kiriman mutasi masuk (IN_TRANSIT) untuk cabang ini
-      try {
-        const trRes = await fetch('/api/transfers').then((r) => r.json());
-        const trList: StockTransfer[] = trRes?.data || trRes?.transfers || [];
-        const inTransitForStore = trList.filter(
-          (t) => t.status === 'IN_TRANSIT' && (!storeId || t.destination_store_id === storeId)
-        );
-        setIncomingTransfersCount(inTransitForStore.length);
-      } catch (e) {
-        console.error('Failed to load incoming transfers count:', e);
-      }
-
-      // Ambil produk dan stok cabang kasir
-      await loadProductsAndInventory(storeId);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadProductsAndInventory = async (storeId?: string) => {
-    try {
-      const invUrl = storeId ? `/api/inventory?storeId=${storeId}` : '/api/inventory';
-      const [prodRes, invData] = await Promise.all([
-        fetch('/api/products').then((r) => r.json()),
-        fetch(invUrl).then((r) => r.json()),
+      // Jalankan seluruh fetch data independen secara paralel
+      const [uRes, sessRes, cfgRes, trRes, prodRes]: any[] = await Promise.all([
+        fetch('/api/users/me').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+        fetch('/api/pos/session').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+        fetch('/api/loyalty/config').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+        fetch('/api/transfers').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
+        fetch('/api/products').then((r) => (r.ok ? r.json() : {})).catch(() => ({})),
       ]);
 
-      const prodList = prodRes?.data || prodRes?.products || [];
-      if (Array.isArray(prodList)) {
-        setProducts(prodList.filter((p: Product) => p.is_active));
+      const activeUser = uRes?.user || null;
+      if (activeUser) {
+        setUser(activeUser);
+        try {
+          localStorage.setItem('bb_current_user', JSON.stringify(activeUser));
+        } catch {}
       }
 
+      let storeId = activeUser?.assigned_store_id;
+
+      // Ambil detail cabang kasir
+      if (storeId) {
+        fetch(`/api/stores/${storeId}`)
+          .then((r) => r.json())
+          .then((sData) => {
+            if (sData?.store) {
+              setStore(sData.store);
+              try {
+                localStorage.setItem('bb_pos_store_cache', JSON.stringify(sData.store));
+              } catch {}
+            }
+          })
+          .catch(() => {});
+      } else {
+        fetch('/api/stores')
+          .then((r) => r.json())
+          .then((storesData) => {
+            const list = storesData.stores || storesData.data || [];
+            const defaultStore = list.find((s: any) => s.type === 'STORE') || list[0];
+            if (defaultStore) {
+              setStore(defaultStore);
+              try {
+                localStorage.setItem('bb_pos_store_cache', JSON.stringify(defaultStore));
+              } catch {}
+            }
+          })
+          .catch(() => {});
+      }
+
+      // Sesi kasir
+      if (sessRes) {
+        setSession(sessRes.session || null);
+        try {
+          if (sessRes.session) {
+            localStorage.setItem('bb_pos_session_cache', JSON.stringify(sessRes.session));
+          } else {
+            localStorage.removeItem('bb_pos_session_cache');
+          }
+        } catch {}
+
+        if (typeof sessRes.available_cash === 'number') {
+          setAvailableCash(sessRes.available_cash);
+          if (!sessRes.session) {
+            setOpeningCashInput(sessRes.available_cash.toString());
+          }
+        }
+      }
+
+      // Loyalty Config
+      if (cfgRes?.config) setLoyaltyConfig(cfgRes.config);
+
+      // Mutasi Masuk
+      const trList: StockTransfer[] = trRes?.data || trRes?.transfers || [];
+      const inTransitForStore = trList.filter(
+        (t) => t.status === 'IN_TRANSIT' && (!storeId || t.destination_store_id === storeId)
+      );
+      setIncomingTransfersCount(inTransitForStore.length);
+
+      // Produk Master
+      const prodList = prodRes?.data || prodRes?.products || [];
+      if (Array.isArray(prodList) && prodList.length > 0) {
+        const activeProds = prodList.filter((p: Product) => p.is_active);
+        setProducts(activeProds);
+        try {
+          localStorage.setItem('bb_pos_products_cache', JSON.stringify(activeProds));
+        } catch {}
+      }
+
+      // Stok Inventaris Cabang Kasir
+      const invUrl = storeId ? `/api/inventory?storeId=${storeId}` : '/api/inventory';
+      const invData: any = await fetch(invUrl).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
       const balList = invData?.data || invData?.balances || [];
       if (Array.isArray(balList)) {
         const map: Record<string, number> = {};
@@ -223,9 +280,14 @@ export default function CashierPOSPage() {
           map[bal.product_id] = bal.quantity;
         }
         setInventoryMap(map);
+        try {
+          localStorage.setItem('bb_pos_inventory_cache', JSON.stringify(map));
+        } catch {}
       }
     } catch (err) {
-      console.error('Failed to load products/inventory:', err);
+      console.error('Failed to load initial POS data:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -645,8 +707,8 @@ export default function CashierPOSPage() {
       setPointsToRedeemInput('0');
       setPayReference('');
 
-      // Refresh Sesi & Stok
-      loadInitialData();
+      // Refresh Sesi & Stok secara Senyap (Tanpa Menampilkan Layar Loading)
+      loadInitialData(true);
     } catch (err: any) {
       setCheckoutError(err.message || 'Terjadi kesalahan sistem.');
     } finally {
@@ -891,7 +953,31 @@ export default function CashierPOSPage() {
                 })}
               </div>
 
-              {filteredProducts.length === 0 && (
+              {/* SKELETON SHIMMER PLACEHOLDER SAAT LOADING COLD PERTAMA KALI */}
+              {loading && filteredProducts.length === 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                  {[...Array(8)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 animate-pulse space-y-3"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="h-3 w-14 bg-slate-800 rounded" />
+                        <div className="h-3 w-10 bg-slate-800 rounded" />
+                      </div>
+                      <div className="h-4 w-3/4 bg-slate-800 rounded" />
+                      <div className="h-2.5 w-1/2 bg-slate-800/60 rounded" />
+                      <div className="pt-2 border-t border-slate-800/80 flex justify-between items-center">
+                        <div className="h-4 w-16 bg-slate-800 rounded" />
+                        <div className="w-7 h-7 bg-slate-800 rounded-lg" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* KONDISI JIKA BENAR-BENAR KOSONG SETELAH SELESAI LOADING */}
+              {!loading && filteredProducts.length === 0 && (
                 <div className="text-center py-20 px-4 text-slate-500 space-y-2">
                   <Package className="w-10 h-10 mx-auto mb-2 opacity-30 text-[#D4AF37]" />
                   <p className="text-sm font-bold text-slate-200">

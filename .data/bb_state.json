@@ -2938,9 +2938,9 @@
       "id": "inv-0002-p-kp-0001",
       "store_id": "a0000000-0000-0000-0000-000000000002",
       "product_id": "p-kp-0001",
-      "quantity": 84,
+      "quantity": 74,
       "moving_avg_cost": 557,
-      "last_updated_at": "2026-11-21T08:03:19.550Z"
+      "last_updated_at": "2026-11-22T06:53:49.622Z"
     },
     {
       "id": "inv-0003-p-kp-0001",
@@ -2962,17 +2962,17 @@
       "id": "inv-0001-p-kp-0002",
       "store_id": "a0000000-0000-0000-0000-000000000001",
       "product_id": "p-kp-0002",
-      "quantity": 0,
-      "moving_avg_cost": 0,
-      "last_updated_at": "2026-11-20T13:30:36.000Z"
+      "quantity": 120,
+      "moving_avg_cost": 720,
+      "last_updated_at": "2026-11-22T06:52:53.189Z"
     },
     {
       "id": "inv-0002-p-kp-0002",
       "store_id": "a0000000-0000-0000-0000-000000000002",
       "product_id": "p-kp-0002",
-      "quantity": 270,
+      "quantity": 260,
       "moving_avg_cost": 700,
-      "last_updated_at": "2026-11-20T13:30:36.000Z"
+      "last_updated_at": "2026-11-22T06:53:49.628Z"
     },
     {
       "id": "inv-0003-p-kp-0002",
@@ -2994,9 +2994,9 @@
       "id": "inv-0001-p-kp-0003",
       "store_id": "a0000000-0000-0000-0000-000000000001",
       "product_id": "p-kp-0003",
-      "quantity": 0,
-      "moving_avg_cost": 0,
-      "last_updated_at": "2026-11-20T13:30:36.000Z"
+      "quantity": 50,
+      "moving_avg_cost": 720,
+      "last_updated_at": "2026-11-22T06:52:53.195Z"
     },
     {
       "id": "inv-0002-p-kp-0003",
@@ -3026,17 +3026,17 @@
       "id": "inv-0001-p-kp-0004",
       "store_id": "a0000000-0000-0000-0000-000000000001",
       "product_id": "p-kp-0004",
-      "quantity": 0,
-      "moving_avg_cost": 0,
-      "last_updated_at": "2026-11-20T13:30:36.000Z"
+      "quantity": 50,
+      "moving_avg_cost": 720,
+      "last_updated_at": "2026-11-22T06:52:53.199Z"
     },
     {
       "id": "inv-0002-p-kp-0004",
       "store_id": "a0000000-0000-0000-0000-000000000002",
       "product_id": "p-kp-0004",
-      "quantity": 85,
+      "quantity": 75,
       "moving_avg_cost": 0,
-      "last_updated_at": "2026-11-20T13:30:36.000Z"
+      "last_updated_at": "2026-11-22T06:53:49.633Z"
     },
     {
       "id": "inv-0003-p-kp-0004",
@@ -7443,6 +7443,276 @@
   "stockTransferItems": [],
   "stockMovements": [
     {
+      "id": "mov-1795330429633-eh07h",
+      "store_id": "a0000000-0000-0000-0000-000000000002",
+      "product_id": "p-kp-0004",
+      "movement_type": "SALE",
+      "reference_id": "INV-KDL01-20261122-5435",
+      "quantity_delta": -10,
+      "cost_per_unit": 0,
+      "balance_after": 75,
+      "moving_avg_cost_after": 0,
+      "notes": "Penjualan Kasir POS: INV-KDL01-20261122-5435",
+      "created_by": "u0000000-0000-0000-0000-000000000003",
+      "created_at": "2026-11-22T06:53:49.633Z",
+      "product": {
+        "id": "p-kp-0004",
+        "sku": "BBK-0004",
+        "barcode": null,
+        "name": "Angel Heart",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      },
+      "store": {
+        "id": "a0000000-0000-0000-0000-000000000002",
+        "code": "STORE-KDL-01",
+        "name": "BB Parfum Toko 1 - Kendal Kota",
+        "type": "STORE",
+        "address": "Jl. Pemuda No. 12A, Kendal Kota",
+        "phone": "0812-3344-5502",
+        "is_active": true,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "mov-1795330429628-2tu2a",
+      "store_id": "a0000000-0000-0000-0000-000000000002",
+      "product_id": "p-kp-0002",
+      "movement_type": "SALE",
+      "reference_id": "INV-KDL01-20261122-5435",
+      "quantity_delta": -10,
+      "cost_per_unit": 700,
+      "balance_after": 260,
+      "moving_avg_cost_after": 700,
+      "notes": "Penjualan Kasir POS: INV-KDL01-20261122-5435",
+      "created_by": "u0000000-0000-0000-0000-000000000003",
+      "created_at": "2026-11-22T06:53:49.628Z",
+      "product": {
+        "id": "p-kp-0002",
+        "sku": "BBK-0002",
+        "barcode": null,
+        "name": "Ameer Al Oud",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      },
+      "store": {
+        "id": "a0000000-0000-0000-0000-000000000002",
+        "code": "STORE-KDL-01",
+        "name": "BB Parfum Toko 1 - Kendal Kota",
+        "type": "STORE",
+        "address": "Jl. Pemuda No. 12A, Kendal Kota",
+        "phone": "0812-3344-5502",
+        "is_active": true,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "mov-1795330429622-a5boq",
+      "store_id": "a0000000-0000-0000-0000-000000000002",
+      "product_id": "p-kp-0001",
+      "movement_type": "SALE",
+      "reference_id": "INV-KDL01-20261122-5435",
+      "quantity_delta": -10,
+      "cost_per_unit": 557,
+      "balance_after": 74,
+      "moving_avg_cost_after": 557,
+      "notes": "Penjualan Kasir POS: INV-KDL01-20261122-5435",
+      "created_by": "u0000000-0000-0000-0000-000000000003",
+      "created_at": "2026-11-22T06:53:49.622Z",
+      "product": {
+        "id": "p-kp-0001",
+        "sku": "BBK-0001",
+        "barcode": null,
+        "name": "Alpha x",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      },
+      "store": {
+        "id": "a0000000-0000-0000-0000-000000000002",
+        "code": "STORE-KDL-01",
+        "name": "BB Parfum Toko 1 - Kendal Kota",
+        "type": "STORE",
+        "address": "Jl. Pemuda No. 12A, Kendal Kota",
+        "phone": "0812-3344-5502",
+        "is_active": true,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "mov-1795330373199-kmgf3",
+      "store_id": "a0000000-0000-0000-0000-000000000001",
+      "product_id": "p-kp-0004",
+      "movement_type": "PURCHASE_RECEIPT",
+      "reference_id": "REQ-BBP-324543",
+      "quantity_delta": 50,
+      "cost_per_unit": 720,
+      "balance_after": 50,
+      "moving_avg_cost_after": 720,
+      "notes": "Belanja Langsung Masuk Stok (REQ-BBP-324543) oleh Super Admin Kendal (Owner)",
+      "created_by": "Super Admin Kendal (Owner)",
+      "created_at": "2026-11-22T06:52:53.199Z",
+      "product": {
+        "id": "p-kp-0004",
+        "sku": "BBK-0004",
+        "barcode": null,
+        "name": "Angel Heart",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      },
+      "store": {
+        "id": "a0000000-0000-0000-0000-000000000001",
+        "code": "WH-KENDAL-01",
+        "name": "Gudang Pusat Distribusi Kendal",
+        "type": "WAREHOUSE",
+        "address": "Jl. Sukarno-Hatta No. 88, Kebondalem, Kendal",
+        "phone": "0812-3344-5501",
+        "is_active": true,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "mov-1795330373195-ncosb",
+      "store_id": "a0000000-0000-0000-0000-000000000001",
+      "product_id": "p-kp-0003",
+      "movement_type": "PURCHASE_RECEIPT",
+      "reference_id": "REQ-BBP-324543",
+      "quantity_delta": 50,
+      "cost_per_unit": 720,
+      "balance_after": 50,
+      "moving_avg_cost_after": 720,
+      "notes": "Belanja Langsung Masuk Stok (REQ-BBP-324543) oleh Super Admin Kendal (Owner)",
+      "created_by": "Super Admin Kendal (Owner)",
+      "created_at": "2026-11-22T06:52:53.196Z",
+      "product": {
+        "id": "p-kp-0003",
+        "sku": "BBK-0003",
+        "barcode": null,
+        "name": "Amnesty",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      },
+      "store": {
+        "id": "a0000000-0000-0000-0000-000000000001",
+        "code": "WH-KENDAL-01",
+        "name": "Gudang Pusat Distribusi Kendal",
+        "type": "WAREHOUSE",
+        "address": "Jl. Sukarno-Hatta No. 88, Kebondalem, Kendal",
+        "phone": "0812-3344-5501",
+        "is_active": true,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
+      "id": "mov-1795330373189-8e0ms",
+      "store_id": "a0000000-0000-0000-0000-000000000001",
+      "product_id": "p-kp-0002",
+      "movement_type": "PURCHASE_RECEIPT",
+      "reference_id": "REQ-BBP-324543",
+      "quantity_delta": 120,
+      "cost_per_unit": 720,
+      "balance_after": 120,
+      "moving_avg_cost_after": 720,
+      "notes": "Belanja Langsung Masuk Stok (REQ-BBP-324543) oleh Super Admin Kendal (Owner)",
+      "created_by": "Super Admin Kendal (Owner)",
+      "created_at": "2026-11-22T06:52:53.189Z",
+      "product": {
+        "id": "p-kp-0002",
+        "sku": "BBK-0002",
+        "barcode": null,
+        "name": "Ameer Al Oud",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      },
+      "store": {
+        "id": "a0000000-0000-0000-0000-000000000001",
+        "code": "WH-KENDAL-01",
+        "name": "Gudang Pusat Distribusi Kendal",
+        "type": "WAREHOUSE",
+        "address": "Jl. Sukarno-Hatta No. 88, Kebondalem, Kendal",
+        "phone": "0812-3344-5501",
+        "is_active": true,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": "2026-01-01T00:00:00.000Z"
+      }
+    },
+    {
       "id": "mov-1795249408305-70agb",
       "store_id": "a0000000-0000-0000-0000-000000000001",
       "product_id": "p-kp-0001",
@@ -9917,17 +10187,37 @@
   ],
   "purchases": [
     {
+      "id": "po-1795330324543-mjs4g",
+      "po_number": "REQ-BBP-324543",
+      "supplier_id": "s0000000-0000-0000-0000-000000000001",
+      "destination_store_id": "a0000000-0000-0000-0000-000000000001",
+      "status": "RECEIVED",
+      "total_amount": 158400,
+      "notes": "Pengajuan restock bersama 3 SKU kebutuhan persediaan gudang.",
+      "ordered_at": "2026-11-22T06:52:53.203Z",
+      "created_by": "Staf Logistik Kendal",
+      "created_at": "2026-11-22T06:52:04.543Z",
+      "updated_at": "2026-11-22T06:52:53.203Z",
+      "approved_by": "Super Admin Kendal (Owner)",
+      "approved_at": "2026-11-22T06:52:53.203Z",
+      "received_by": "Super Admin Kendal (Owner)",
+      "received_at": "2026-11-22T06:52:53.203Z"
+    },
+    {
       "id": "po-1795253846209-rektt",
       "po_number": "REQ-BBP-846209",
       "supplier_id": "s0000000-0000-0000-0000-000000000001",
       "destination_store_id": "a0000000-0000-0000-0000-000000000001",
-      "status": "PENDING_APPROVAL",
+      "status": "REJECTED",
       "total_amount": 72000,
       "notes": "Pengajuan restock bersama 2 SKU kebutuhan persediaan gudang.",
       "ordered_at": null,
       "created_by": "Staf Logistik Kendal",
       "created_at": "2026-11-21T09:37:26.209Z",
-      "updated_at": "2026-11-21T09:37:26.209Z"
+      "updated_at": "2026-11-22T06:53:06.828Z",
+      "rejected_by": "Super Admin Kendal (Owner)",
+      "rejected_at": "2026-11-22T06:53:06.828Z",
+      "rejection_reason": "Salah"
     },
     {
       "id": "po-1795249362815-f6j5j",
@@ -9996,9 +10286,54 @@
       "quantity": 50,
       "unit_cost": 720,
       "subtotal": 36000
+    },
+    {
+      "id": "po-item-1795330324543-mk7yd",
+      "purchase_id": "po-1795330324543-mjs4g",
+      "product_id": "p-kp-0002",
+      "quantity": 120,
+      "unit_cost": 720,
+      "subtotal": 86400
+    },
+    {
+      "id": "po-item-1795330324543-rbj0l",
+      "purchase_id": "po-1795330324543-mjs4g",
+      "product_id": "p-kp-0003",
+      "quantity": 50,
+      "unit_cost": 720,
+      "subtotal": 36000
+    },
+    {
+      "id": "po-item-1795330324543-z9cbo",
+      "purchase_id": "po-1795330324543-mjs4g",
+      "product_id": "p-kp-0004",
+      "quantity": 50,
+      "unit_cost": 720,
+      "subtotal": 36000
     }
   ],
   "sales": [
+    {
+      "id": "sale-1795330429622-rzsjxd",
+      "invoice_number": "INV-KDL01-20261122-5435",
+      "store_id": "a0000000-0000-0000-0000-000000000002",
+      "cashier_id": "u0000000-0000-0000-0000-000000000003",
+      "member_id": null,
+      "cash_session_id": "cs-1795330420776-iaiual",
+      "subtotal": 54000,
+      "discount_amount": 0,
+      "final_amount": 54000,
+      "total_cost": 12570,
+      "payment_status": "PAID",
+      "sale_status": "COMPLETED",
+      "idempotency_key": "pos-STORE-KDL-01-1795330427914-5c6cfeqf8",
+      "points_redeemed": 0,
+      "points_earned": 0,
+      "perfume_tier": "Standard",
+      "notes": null,
+      "created_at": "2026-11-22T06:53:49.622Z",
+      "updated_at": "2026-11-22T06:53:49.622Z"
+    },
     {
       "id": "sale-1795248199549-dq2bjl",
       "invoice_number": "INV-KDL01-20261121-4421",
@@ -11959,6 +12294,99 @@
         "product_type": "PELARUT",
         "unit_name": "pcs",
         "is_blendable": false,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      }
+    },
+    {
+      "id": "si-1795330429622-gnfyhk",
+      "sale_id": "sale-1795330429622-rzsjxd",
+      "product_id": "p-kp-0001",
+      "quantity": 10,
+      "unit_price": 1800,
+      "unit_cost": 557,
+      "discount_amount": 0,
+      "subtotal": 18000,
+      "created_at": "2026-11-22T06:53:49.622Z",
+      "product": {
+        "id": "p-kp-0001",
+        "sku": "BBK-0001",
+        "barcode": null,
+        "name": "Alpha x",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      }
+    },
+    {
+      "id": "si-1795330429628-krp4vo",
+      "sale_id": "sale-1795330429622-rzsjxd",
+      "product_id": "p-kp-0002",
+      "quantity": 10,
+      "unit_price": 1800,
+      "unit_cost": 700,
+      "discount_amount": 0,
+      "subtotal": 18000,
+      "created_at": "2026-11-22T06:53:49.628Z",
+      "product": {
+        "id": "p-kp-0002",
+        "sku": "BBK-0002",
+        "barcode": null,
+        "name": "Ameer Al Oud",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
+        "is_active": true,
+        "created_at": "2026-11-20T13:30:36.000Z",
+        "updated_at": "2026-11-20T13:30:36.000Z"
+      }
+    },
+    {
+      "id": "si-1795330429633-xnme78",
+      "sale_id": "sale-1795330429622-rzsjxd",
+      "product_id": "p-kp-0004",
+      "quantity": 10,
+      "unit_price": 1800,
+      "unit_cost": 0,
+      "discount_amount": 0,
+      "subtotal": 18000,
+      "created_at": "2026-11-22T06:53:49.633Z",
+      "product": {
+        "id": "p-kp-0004",
+        "sku": "BBK-0004",
+        "barcode": null,
+        "name": "Angel Heart",
+        "category_id": "c0000000-0000-0000-0000-000000000010",
+        "size_ml": 1,
+        "scent_type": "Bibit Murni Konsentrat",
+        "top_notes": null,
+        "middle_notes": null,
+        "base_notes": null,
+        "base_price": 1800,
+        "min_stock_alert": 0,
+        "product_type": "BIBIT",
+        "unit_name": "ml",
+        "is_blendable": true,
         "is_active": true,
         "created_at": "2026-11-20T13:30:36.000Z",
         "updated_at": "2026-11-20T13:30:36.000Z"
@@ -18359,6 +18787,114 @@
   ],
   "auditLogs": [
     {
+      "action": "CASH_SESSION_OPENED",
+      "entity_name": "cash_sessions",
+      "entity_id": "cs-1795330420776-iaiual",
+      "new_data": {
+        "store_id": "a0000000-0000-0000-0000-000000000002",
+        "opening_cash": 525800
+      },
+      "id": "log-1795330420782-o8v96g",
+      "created_at": "2026-11-22T06:53:40.782Z"
+    },
+    {
+      "action": "USER_LOGIN_SUCCESS",
+      "entity_name": "user_profiles",
+      "entity_id": "u0000000-0000-0000-0000-000000000003",
+      "new_data": {
+        "email": "kasir.kendal@bbparfum.id",
+        "role": "CASHIER",
+        "assigned_store_id": "a0000000-0000-0000-0000-000000000002"
+      },
+      "id": "log-1795330395559-dfexbt",
+      "created_at": "2026-11-22T06:53:15.559Z"
+    },
+    {
+      "action": "PURCHASE_REJECTED",
+      "entity_name": "purchases",
+      "entity_id": "po-1795253846209-rektt",
+      "new_data": {
+        "po_number": "REQ-BBP-846209",
+        "reason": "Salah"
+      },
+      "id": "log-1795330386828-auprcg",
+      "created_at": "2026-11-22T06:53:06.828Z"
+    },
+    {
+      "action": "PURCHASE_APPROVED_AND_RECEIVED",
+      "entity_name": "purchases",
+      "entity_id": "po-1795330324543-mjs4g",
+      "new_data": {
+        "po_number": "REQ-BBP-324543",
+        "total_amount": 158400,
+        "items_count": 3,
+        "approved_by": "Super Admin Kendal (Owner)"
+      },
+      "id": "log-1795330373212-g9a0az",
+      "created_at": "2026-11-22T06:52:53.212Z"
+    },
+    {
+      "action": "WALLET_TRANSACTION",
+      "entity_name": "company_wallet",
+      "entity_id": "wtx-1795330373203-n3zuh",
+      "new_data": {
+        "type": "PURCHASE_PAYMENT",
+        "amount": -158400,
+        "balance_after": 149114400,
+        "desc": "Pembayaran Belanja Bahan Baku (REQ-BBP-324543)",
+        "operator": "Super Admin Kendal (Owner)"
+      },
+      "id": "log-1795330373203-0quh22",
+      "created_at": "2026-11-22T06:52:53.203Z"
+    },
+    {
+      "action": "USER_LOGIN_SUCCESS",
+      "entity_name": "user_profiles",
+      "entity_id": "u0000000-0000-0000-0000-000000000001",
+      "new_data": {
+        "email": "admin@bbparfum.id",
+        "role": "SUPER_ADMIN",
+        "assigned_store_id": null
+      },
+      "id": "log-1795330334975-xszlwl",
+      "created_at": "2026-11-22T06:52:14.975Z"
+    },
+    {
+      "action": "PURCHASE_ORDER_CREATE",
+      "entity_name": "purchases",
+      "entity_id": "po-1795330324543-mjs4g",
+      "new_data": {
+        "po_number": "REQ-BBP-324543",
+        "total_amount": 108000
+      },
+      "id": "log-1795330324552-wmlesu",
+      "created_at": "2026-11-22T06:52:04.552Z"
+    },
+    {
+      "action": "USER_LOGIN_SUCCESS",
+      "entity_name": "user_profiles",
+      "entity_id": "u0000000-0000-0000-0000-000000000002",
+      "new_data": {
+        "email": "logistik@bbparfum.id",
+        "role": "LOGISTICS",
+        "assigned_store_id": "a0000000-0000-0000-0000-000000000001"
+      },
+      "id": "log-1795330146298-ua4zeq",
+      "created_at": "2026-11-22T06:49:06.298Z"
+    },
+    {
+      "action": "USER_LOGIN_SUCCESS",
+      "entity_name": "user_profiles",
+      "entity_id": "u0000000-0000-0000-0000-000000000001",
+      "new_data": {
+        "email": "admin@bbparfum.id",
+        "role": "SUPER_ADMIN",
+        "assigned_store_id": null
+      },
+      "id": "log-1795330132382-fez4pn",
+      "created_at": "2026-11-22T06:48:52.382Z"
+    },
+    {
       "action": "USER_LOGIN_SUCCESS",
       "entity_name": "user_profiles",
       "entity_id": "u0000000-0000-0000-0000-000000000003",
@@ -20104,6 +20640,18 @@
   ],
   "cashSessions": [
     {
+      "id": "cs-1795330420776-iaiual",
+      "store_id": "a0000000-0000-0000-0000-000000000002",
+      "cashier_id": "u0000000-0000-0000-0000-000000000003",
+      "opening_cash": 525800,
+      "total_sales_cash": 0,
+      "expected_cash": 525800,
+      "status": "OPEN",
+      "opened_at": "2026-11-22T06:53:40.776Z",
+      "notes": "Pembukaan Shift Kasir",
+      "created_at": "2026-11-22T06:53:40.776Z"
+    },
+    {
       "id": "cs-1795247984730-vse66l",
       "store_id": "a0000000-0000-0000-0000-000000000002",
       "cashier_id": "u0000000-0000-0000-0000-000000000003",
@@ -20182,6 +20730,17 @@
     "is_active": true
   },
   "companyWalletTransactions": [
+    {
+      "id": "wtx-1795330373203-n3zuh",
+      "transaction_type": "PURCHASE_PAYMENT",
+      "amount": -158400,
+      "balance_after": 149114400,
+      "category": "Belanja Bahan Supplier",
+      "reference_id": "REQ-BBP-324543",
+      "description": "Pembayaran Belanja Bahan Baku (REQ-BBP-324543)",
+      "operator": "Super Admin Kendal (Owner)",
+      "created_at": "2026-11-22T06:52:53.203Z"
+    },
     {
       "id": "wtx-1795249408311-e2jug",
       "transaction_type": "PURCHASE_PAYMENT",
