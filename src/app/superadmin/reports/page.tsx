@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatIDR } from '@/lib/formatters';
@@ -17,6 +18,7 @@ import {
   Calendar,
   Filter,
   X,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const formatDateLocal = (d: Date) => {
@@ -103,6 +105,92 @@ export default function SuperAdminReportsPage() {
     return 'Semua Waktu';
   }, [startDate, endDate]);
 
+  const handleExportExcel = () => {
+    if (!report) return;
+
+    // 1. Metadata & Ringkasan Laporan
+    const storeObj = stores.find((s) => s.id === selectedStore);
+    const storeName = storeObj
+      ? `${storeObj.name} (${storeObj.code})`
+      : 'Konsolidasi Semua Cabang (Kendal Kota, Pegandon, Kaliwungu)';
+
+    const rows: any[] = [
+      ['LAPORAN KEUANGAN & PERSENYAAN RETAIL - BB PARFUM'],
+      ['Waktu Export:', new Date().toLocaleString('id-ID')],
+      ['Filter Cabang:', storeName],
+      ['Periode Laporan:', activePeriodLabel],
+      [],
+      ['=== RINGKASAN FINANSIAL OPERASIONAL ==='],
+      ['Nama Metrik', 'Nilai (IDR / Angka)'],
+      ['Penjualan Kotor (Gross Sales)', report.total_gross_sales],
+      ['Total Diskon / Poin Loyalitas', report.total_discounts],
+      ['Penjualan Bersih (Net Sales)', report.total_net_sales],
+      ['HPP Terjual (COGS Moving Average)', report.total_cogs],
+      ['Laba Kotor (Gross Profit)', report.gross_profit],
+      ['Margin Laba Kotor (%)', `${report.gross_profit_margin_pct}%`],
+      ['Total Biaya Operasional (OPEX)', report.total_expenses],
+      ['Laba Bersih Operasional', report.net_operating_profit],
+      ['Total Nilai Persediaan Fisik (Moving HPP)', report.total_inventory_value],
+      ['Total Transaksi / Struk Kasir', report.total_transactions],
+      [],
+      ['=== KOMPARASI KINERJA FINANSIAL ANTAR CABANG ==='],
+      [
+        'Kode Cabang',
+        'Nama Toko Cabang',
+        'Penjualan Bersih (IDR)',
+        'HPP COGS (IDR)',
+        'Laba Kotor (IDR)',
+        'Margin (%)',
+        'Biaya OPEX (IDR)',
+        'Laba Operasional (IDR)',
+        'Nilai Stok Fisik (IDR)',
+        'Jumlah Struk',
+      ],
+    ];
+
+    if (report.store_metrics && report.store_metrics.length > 0) {
+      report.store_metrics.forEach((m) => {
+        rows.push([
+          m.store_code,
+          m.store_name,
+          m.net_sales,
+          m.cogs,
+          m.gross_profit,
+          `${m.gross_profit_margin_pct}%`,
+          m.expenses,
+          m.net_operating_profit,
+          m.inventory_value,
+          m.transaction_count,
+        ]);
+      });
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Atur lebar kolom agar rapi di Microsoft Excel & Google Sheets
+    ws['!cols'] = [
+      { wch: 38 },
+      { wch: 32 },
+      { wch: 22 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 14 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Laporan Keuangan');
+
+    // Nama file rapi
+    const cleanPeriod = activePeriodLabel.replace(/[^a-zA-Z0-9]/g, '_');
+    const filename = `Laporan_Keuangan_BB_Parfum_${cleanPeriod}.xlsx`;
+
+    XLSX.writeFile(wb, filename);
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -164,6 +252,16 @@ export default function SuperAdminReportsPage() {
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Segarkan Laporan
+          </Button>
+
+          <Button
+            variant="gold"
+            size="sm"
+            onClick={handleExportExcel}
+            className="bg-[#D4AF37] hover:bg-[#b89528] text-slate-950 font-bold shadow-md flex items-center gap-2"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Export Excel (.xlsx)
           </Button>
         </div>
       </div>
@@ -286,19 +384,6 @@ export default function SuperAdminReportsPage() {
           </div>
         </div>
       </Card>
-
-      {/* Disclaimer Banner Akuntansi Operasional */}
-      <div className="p-4 bg-amber-950/20 border border-amber-800/40 rounded-xl text-amber-200/90 text-xs flex items-start gap-3">
-        <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-semibold text-amber-300">
-            Pemberitahuan Batasan Laporan Operasional Ritel:
-          </p>
-          <p className="text-amber-200/80 mt-0.5 leading-relaxed">
-            Laporan ini adalah laporan laba-rugi operasional ritel internal berbasis transaksi POS (Omzet Bersih, Snapshot HPP Terjual, Biaya Operasional Cabang, dan Nilai Stok Aktual). Laporan ini bukan neraca saldo akuntansi korporat penuh (belum memperhitungkan depresiasi aset tetap, amortisasi, atau pajak badan akhir tahun). Mutasi antar-toko tidak dihitung sebagai omzet penjualan, dan pembelian barang tidak dibebankan sebagai HPP saat pembelian.
-          </p>
-        </div>
-      </div>
 
       {/* 6 Metric Cards Utama */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
