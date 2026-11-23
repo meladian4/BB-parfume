@@ -42,7 +42,7 @@ export default function TransfersPage() {
   const [sourceStoreId, setSourceStoreId] = useState('');
   const [destinationStoreId, setDestinationStoreId] = useState('');
   const [transferNotes, setTransferNotes] = useState('');
-  const [transferItems, setTransferItems] = useState<Array<{ product_id: string; quantity: number }>>([]);
+  const [transferItems, setTransferItems] = useState<Array<{ product_id: string; quantity: number | '' }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -122,7 +122,13 @@ export default function TransfersPage() {
     if (field === 'product_id') {
       next[index].product_id = String(val);
     } else if (field === 'quantity') {
-      next[index].quantity = Math.max(1, parseInt(String(val)) || 1);
+      const strVal = String(val);
+      if (strVal === '') {
+        next[index].quantity = '';
+      } else {
+        const parsed = parseInt(strVal, 10);
+        next[index].quantity = Number.isNaN(parsed) ? '' : Math.max(0, parsed);
+      }
     }
     setTransferItems(next);
   };
@@ -135,6 +141,12 @@ export default function TransfersPage() {
 
   const handleCreateTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
+    const invalidItem = transferItems.find((it) => it.quantity === '' || Number(it.quantity) < 1);
+    if (invalidItem) {
+      setError('Jumlah setiap item mutasi wajib diisi minimal 1.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
 
@@ -147,7 +159,10 @@ export default function TransfersPage() {
           destination_store_id: destinationStoreId,
           notes: transferNotes.trim() || undefined,
           user_id: userRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin Logistik Kendal',
-          items: transferItems,
+          items: transferItems.map((it) => ({
+            product_id: it.product_id,
+            quantity: Number(it.quantity),
+          })),
         }),
       });
 

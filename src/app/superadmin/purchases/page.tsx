@@ -36,10 +36,13 @@ interface EditablePurchaseItem {
   product_type: string;
   unit_name: string;
   quantity: number; // Kuantitas riil belanja aktual
+  quantityInput: string;
   requested_quantity: number; // Kuantitas awal yang diminta logistik
   initial_cost: number;
   unit_cost: number; // Harga beli per unit / per ml
+  unitCostInput: string;
   subtotal: number; // Total nota belanja (quantity * unit_cost)
+  subtotalInput: string;
   base_price: number;
 }
 
@@ -91,6 +94,7 @@ export default function SuperAdminPurchasesPage() {
       const unitName = formatProductUnit(p);
       const qty = it.quantity || 1;
       const cost = it.unit_cost || 0;
+      const sub = Math.round(qty * cost);
       return {
         id: it.id,
         product_id: it.product_id,
@@ -98,10 +102,13 @@ export default function SuperAdminPurchasesPage() {
         product_type: p?.product_type || 'BIBIT',
         unit_name: unitName,
         quantity: qty,
+        quantityInput: String(qty),
         requested_quantity: qty,
         initial_cost: cost,
         unit_cost: cost,
-        subtotal: Math.round(qty * cost),
+        unitCostInput: String(cost),
+        subtotal: sub,
+        subtotalInput: String(sub),
         base_price: p?.base_price || 0,
       };
     });
@@ -109,47 +116,85 @@ export default function SuperAdminPurchasesPage() {
     setIsApproveModalOpen(true);
   };
 
-  // 1. Ubah Kuantitas Riil Belanja (misal logistik minta 100 ml, owner belanja 40 ml)
-  const handleItemQuantityChange = (productId: string, val: number) => {
+  // 1. Ubah Kuantitas Riil Belanja (boleh dikosongkan / diisi 0 saat mengetik)
+  const handleItemQuantityChange = (productId: string, rawVal: string) => {
     setEditableItems((prev) =>
       prev.map((item) => {
         if (item.product_id !== productId) return item;
-        const q = Math.max(1, val);
+        if (rawVal === '') {
+          return {
+            ...item,
+            quantityInput: '',
+            quantity: 0,
+            subtotal: 0,
+            subtotalInput: '',
+          };
+        }
+        const parsed = parseFloat(rawVal);
+        const q = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+        const sub = Math.round(q * item.unit_cost);
         return {
           ...item,
+          quantityInput: rawVal,
           quantity: q,
-          subtotal: Math.round(q * item.unit_cost),
+          subtotal: sub,
+          subtotalInput: String(sub),
         };
       })
     );
   };
 
   // 2. Ubah Harga Satuan Riil -> Subtotal nota otomatis terhitung (Qty * Harga Satuan)
-  const handleItemCostChange = (productId: string, val: number) => {
+  const handleItemCostChange = (productId: string, rawVal: string) => {
     setEditableItems((prev) =>
       prev.map((item) => {
         if (item.product_id !== productId) return item;
-        const uc = Math.max(0, val);
+        if (rawVal === '') {
+          return {
+            ...item,
+            unitCostInput: '',
+            unit_cost: 0,
+            subtotal: 0,
+            subtotalInput: '',
+          };
+        }
+        const parsed = parseFloat(rawVal);
+        const uc = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+        const sub = Math.round(item.quantity * uc);
         return {
           ...item,
+          unitCostInput: rawVal,
           unit_cost: uc,
-          subtotal: Math.round(item.quantity * uc),
+          subtotal: sub,
+          subtotalInput: String(sub),
         };
       })
     );
   };
 
   // 3. Ubah Subtotal Riil (Total Nota) -> Otomatis dibagi ke per ml/botol!
-  const handleItemSubtotalChange = (productId: string, val: number) => {
+  const handleItemSubtotalChange = (productId: string, rawVal: string) => {
     setEditableItems((prev) =>
       prev.map((item) => {
         if (item.product_id !== productId) return item;
-        const sub = Math.max(0, val);
+        if (rawVal === '') {
+          return {
+            ...item,
+            subtotalInput: '',
+            subtotal: 0,
+            unit_cost: 0,
+            unitCostInput: '',
+          };
+        }
+        const parsed = parseFloat(rawVal);
+        const sub = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
         const uc = item.quantity > 0 ? Math.round(sub / item.quantity) : 0;
         return {
           ...item,
+          subtotalInput: rawVal,
           subtotal: sub,
           unit_cost: uc,
+          unitCostInput: String(uc),
         };
       })
     );
@@ -159,6 +204,12 @@ export default function SuperAdminPurchasesPage() {
   const handleConfirmApproveAndReceive = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPurchaseToApprove) return;
+
+    const invalidItem = editableItems.find((it) => !it.quantity || it.quantity <= 0);
+    if (invalidItem) {
+      alert(`Kuantitas belanja untuk "${invalidItem.product_name}" harus minimal 1.`);
+      return;
+    }
 
     setApproveSubmitting(true);
     try {
@@ -842,14 +893,14 @@ export default function SuperAdminPurchasesPage() {
                           <div className="relative">
                             <input
                               type="number"
-                              min="1"
+                              min="0"
                               step="1"
-                              value={item.quantity === 0 ? '' : item.quantity}
+                              value={item.quantityInput}
                               onChange={(e) =>
-                                handleItemQuantityChange(item.product_id, parseFloat(e.target.value) || 0)
+                                handleItemQuantityChange(item.product_id, e.target.value)
                               }
                               className="w-full px-3 py-2 sm:py-1.5 bg-[#0A0E1A] border border-slate-700 rounded-lg text-sm sm:text-xs font-mono font-bold text-white focus:outline-none focus:border-[#D4AF37] min-h-[42px] sm:min-h-0 touch-manipulation"
-                              placeholder="Kuantitas"
+                              placeholder="0"
                               required
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-mono">
@@ -883,13 +934,12 @@ export default function SuperAdminPurchasesPage() {
                               type="number"
                               min="0"
                               step="1"
-                              value={item.subtotal === 0 ? '' : item.subtotal}
+                              value={item.subtotalInput}
                               onChange={(e) =>
-                                handleItemSubtotalChange(item.product_id, parseFloat(e.target.value) || 0)
+                                handleItemSubtotalChange(item.product_id, e.target.value)
                               }
                               className="w-full pl-9 pr-3 py-2 sm:py-1.5 bg-[#0A0E1A] border border-amber-500/50 rounded-lg text-sm sm:text-xs font-mono font-bold text-emerald-400 focus:outline-none focus:border-[#D4AF37] min-h-[42px] sm:min-h-0 touch-manipulation"
-                              placeholder="Total Nota"
-                              required
+                              placeholder="0"
                             />
                           </div>
                           <div className="text-[10px] text-slate-400 mt-1">
@@ -910,13 +960,12 @@ export default function SuperAdminPurchasesPage() {
                               type="number"
                               min="0"
                               step="1"
-                              value={item.unit_cost === 0 ? '' : item.unit_cost}
+                              value={item.unitCostInput}
                               onChange={(e) =>
-                                handleItemCostChange(item.product_id, parseFloat(e.target.value) || 0)
+                                handleItemCostChange(item.product_id, e.target.value)
                               }
                               className="w-full pl-9 pr-3 py-2 sm:py-1.5 bg-[#0A0E1A] border border-slate-700 rounded-lg text-sm sm:text-xs font-mono text-white focus:outline-none focus:border-[#D4AF37] min-h-[42px] sm:min-h-0 touch-manipulation"
-                              placeholder="Harga Satuan"
-                              required
+                              placeholder="0"
                             />
                           </div>
                           <div className="text-[10px] text-slate-500 mt-1">

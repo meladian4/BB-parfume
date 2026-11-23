@@ -47,7 +47,7 @@ export default function LogisticsPurchasesPage() {
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [purchaseNotes, setPurchaseNotes] = useState('');
-  const [requestItems, setRequestItems] = useState<Array<{ product_id: string; quantity: number }>>([]);
+  const [requestItems, setRequestItems] = useState<Array<{ product_id: string; quantity: number | '' }>>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -182,7 +182,13 @@ export default function LogisticsPurchasesPage() {
     if (field === 'product_id') {
       next[index].product_id = String(val);
     } else if (field === 'quantity') {
-      next[index].quantity = Math.max(1, parseInt(String(val)) || 1);
+      const strVal = String(val);
+      if (strVal === '') {
+        next[index].quantity = '';
+      } else {
+        const parsed = parseInt(strVal, 10);
+        next[index].quantity = Number.isNaN(parsed) ? '' : Math.max(0, parsed);
+      }
     }
     setRequestItems(next);
   };
@@ -204,6 +210,12 @@ export default function LogisticsPurchasesPage() {
       return;
     }
 
+    const invalidRow = requestItems.find((it) => it.quantity === '' || Number(it.quantity) < 1);
+    if (invalidRow) {
+      setFormError('Jumlah setiap item barang wajib diisi minimal 1.');
+      return;
+    }
+
     setSubmitting(true);
     setFormError('');
 
@@ -217,7 +229,10 @@ export default function LogisticsPurchasesPage() {
           notes: purchaseNotes.trim() || undefined,
           user_id: 'Staf Logistik Kendal',
           status: 'PENDING_APPROVAL',
-          items: requestItems,
+          items: requestItems.map((it) => ({
+            product_id: it.product_id,
+            quantity: Number(it.quantity),
+          })),
         }),
       });
 

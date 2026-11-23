@@ -1349,6 +1349,10 @@ export default function CashierPOSPage() {
                             max={selectedMember.points_balance}
                             value={pointsToRedeemInput}
                             onChange={(e) => {
+                              if (e.target.value === '') {
+                                setPointsToRedeemInput('');
+                                return;
+                              }
                               const val = Math.max(0, Math.min(selectedMember.points_balance, Number(e.target.value) || 0));
                               setPointsToRedeemInput(val.toString());
                             }}
