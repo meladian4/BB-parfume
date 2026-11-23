@@ -432,7 +432,7 @@ export default function CashierHistoryPage() {
             <div className="flex items-center justify-between mb-2 px-1">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-[#D4AF37]" />
-                Rangkuman Item / Kualitas (Omzet Sah)
+                Rangkuman Item / Kualitas
               </p>
               {tierFilter !== 'ALL' && (
                 <button
@@ -466,12 +466,7 @@ export default function CashierHistoryPage() {
                       <span>{item.label}</span>
                     </p>
                     <p className={`text-sm font-bold mt-0.5 ${item.textClass}`}>
-                      {formatIDR(item.omzet)}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
-                      <span className="text-slate-200 font-semibold">{item.notaCount}</span> nota
-                      {' · '}
-                      <span className="text-slate-200 font-semibold">{item.itemQty}</span> pcs
+                      {item.notaCount} <span className="text-xs font-medium text-slate-400">pcs</span>
                     </p>
                   </button>
                 );
