@@ -157,61 +157,75 @@ export default function CashierHistoryPage() {
   };
 
   // Filtered & Sorted Sales
+  const salesBeforeTierFilter = useMemo(() => {
+    return sales.filter((s) => {
+      // 1. Text Search
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        s.invoice_number.toLowerCase().includes(q) ||
+        (s.member?.name && s.member.name.toLowerCase().includes(q)) ||
+        (s.cashier?.full_name && s.cashier.full_name.toLowerCase().includes(q)) ||
+        (s.store?.name && s.store.name.toLowerCase().includes(q)) ||
+        (s.perfume_tier && s.perfume_tier.toLowerCase().includes(q)) ||
+        (s.items && s.items.some((it) => it.product?.name?.toLowerCase().includes(q)));
+
+      if (!matchSearch) return false;
+
+      // 2. Store Filter (Super Admin)
+      if (selectedStoreId !== 'ALL' && s.store_id !== selectedStoreId) {
+        return false;
+      }
+
+      // 3. Payment Method Filter
+      const paymentMethod = s.payments?.[0]?.payment_method || 'CASH';
+      if (paymentMethodFilter !== 'ALL' && paymentMethod !== paymentMethodFilter) {
+        return false;
+      }
+
+      // 4. Status Filter
+      if (statusFilter !== 'ALL' && s.sale_status !== statusFilter) {
+        return false;
+      }
+
+      // 5. Date Filter
+      const dateStr = s.created_at.slice(0, 10);
+      if (datePreset === 'TODAY') {
+        if (dateStr !== getTodayStr()) return false;
+      } else if (datePreset === 'YESTERDAY') {
+        if (dateStr !== getYesterdayStr()) return false;
+      } else if (datePreset === 'LAST_7') {
+        if (dateStr < getLast7DaysStr()) return false;
+      } else if (datePreset === 'THIS_MONTH') {
+        if (dateStr < getMonthStartStr()) return false;
+      } else if (datePreset === 'CUSTOM') {
+        if (customStartDate && dateStr < customStartDate) return false;
+        if (customEndDate && dateStr > customEndDate) return false;
+      }
+
+      return true;
+    });
+  }, [
+    sales,
+    search,
+    selectedStoreId,
+    paymentMethodFilter,
+    statusFilter,
+    datePreset,
+    customStartDate,
+    customEndDate,
+  ]);
+
   const filteredSales = useMemo(() => {
-    return sales
+    return salesBeforeTierFilter
       .filter((s) => {
-        // 1. Text Search
-        const q = search.toLowerCase();
-        const matchSearch =
-          !q ||
-          s.invoice_number.toLowerCase().includes(q) ||
-          (s.member?.name && s.member.name.toLowerCase().includes(q)) ||
-          (s.cashier?.full_name && s.cashier.full_name.toLowerCase().includes(q)) ||
-          (s.store?.name && s.store.name.toLowerCase().includes(q)) ||
-          (s.perfume_tier && s.perfume_tier.toLowerCase().includes(q)) ||
-          (s.items && s.items.some((it) => it.product?.name?.toLowerCase().includes(q)));
-
-        if (!matchSearch) return false;
-
-        // 2. Store Filter (Super Admin)
-        if (selectedStoreId !== 'ALL' && s.store_id !== selectedStoreId) {
-          return false;
-        }
-
-        // 3. Payment Method Filter
-        const paymentMethod = s.payments?.[0]?.payment_method || 'CASH';
-        if (paymentMethodFilter !== 'ALL' && paymentMethod !== paymentMethodFilter) {
-          return false;
-        }
-
-        // 4. Status Filter
-        if (statusFilter !== 'ALL' && s.sale_status !== statusFilter) {
-          return false;
-        }
-
-        // 5. Tier / Jenis Item Filter
+        // Tier / Jenis Item Filter
         if (tierFilter !== 'ALL') {
           const saleTier = (s.perfume_tier || 'Standard').toLowerCase();
           if (saleTier !== tierFilter.toLowerCase()) {
             return false;
           }
         }
-
-        // 6. Date Filter
-        const dateStr = s.created_at.slice(0, 10);
-        if (datePreset === 'TODAY') {
-          if (dateStr !== getTodayStr()) return false;
-        } else if (datePreset === 'YESTERDAY') {
-          if (dateStr !== getYesterdayStr()) return false;
-        } else if (datePreset === 'LAST_7') {
-          if (dateStr < getLast7DaysStr()) return false;
-        } else if (datePreset === 'THIS_MONTH') {
-          if (dateStr < getMonthStartStr()) return false;
-        } else if (datePreset === 'CUSTOM') {
-          if (customStartDate && dateStr < customStartDate) return false;
-          if (customEndDate && dateStr > customEndDate) return false;
-        }
-
         return true;
       })
       .sort((a, b) => {
@@ -235,18 +249,31 @@ export default function CashierHistoryPage() {
         const timeB = new Date(b.created_at).getTime();
         return sortBy === 'DATE_ASC' ? timeA - timeB : timeB - timeA;
       });
-  }, [
-    sales,
-    search,
-    selectedStoreId,
-    paymentMethodFilter,
-    statusFilter,
-    tierFilter,
-    sortBy,
-    datePreset,
-    customStartDate,
-    customEndDate,
-  ]);
+  }, [salesBeforeTierFilter, tierFilter, sortBy]);
+
+  // Rangkuman Item / Kualitas (Standard, Premium, Luxury, Primescent) dari transaksi sah sesuai filter periode/cabang/bayar
+  const tierSummary = useMemo(() => {
+    const validBase = salesBeforeTierFilter.filter((s) => s.sale_status !== 'VOIDED');
+    const tiers = [
+      { id: 'Standard', label: 'Standard', dotClass: 'bg-slate-400', textClass: 'text-slate-200' },
+      { id: 'Premium', label: 'Premium', dotClass: 'bg-amber-400', textClass: 'text-amber-400' },
+      { id: 'Luxury', label: 'Luxury', dotClass: 'bg-purple-400', textClass: 'text-purple-400' },
+      { id: 'Primescent', label: 'Primescent', dotClass: 'bg-emerald-400', textClass: 'text-emerald-400' },
+    ];
+
+    return tiers.map((tier) => {
+      const matched = validBase.filter(
+        (s) => (s.perfume_tier || 'Standard').toLowerCase() === tier.id.toLowerCase()
+      );
+      const omzet = matched.reduce((sum, s) => sum + s.final_amount, 0);
+      const notaCount = matched.length;
+      const itemQty = matched.reduce(
+        (sum, s) => sum + (s.items?.reduce((acc, it) => acc + (it.quantity || 0), 0) || 0),
+        0
+      );
+      return { ...tier, omzet, notaCount, itemQty };
+    });
+  }, [salesBeforeTierFilter]);
 
   // Aggregate stats from filtered list
   const validSales = filteredSales.filter((s) => s.sale_status !== 'VOIDED');
@@ -397,6 +424,58 @@ export default function CashierHistoryPage() {
                   )}
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* Card Rangkuman Item / Kualitas (Standard, Premium, Luxury, Primescent) */}
+          <div className="bg-[#0F172A] border border-[#1E293B] rounded-2xl p-3">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3 h-3 text-[#D4AF37]" />
+                Rangkuman Item / Kualitas (Omzet Sah)
+              </p>
+              {tierFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setTierFilter('ALL')}
+                  className="text-[10px] text-[#D4AF37] hover:underline font-medium"
+                >
+                  Tampilkan Semua Kualitas
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {tierSummary.map((item, idx) => {
+                const isSelected = tierFilter.toLowerCase() === item.id.toLowerCase();
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTierFilter(isSelected ? 'ALL' : item.id)}
+                    title={`Klik untuk filter kualitas ${item.label}`}
+                    className={`text-left rounded-xl p-2 transition-all cursor-pointer ${
+                      idx > 0 ? 'sm:border-l sm:border-slate-800 sm:rounded-l-none sm:pl-3' : ''
+                    } ${
+                      isSelected
+                        ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/60'
+                        : 'hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${item.dotClass}`} />
+                      <span>{item.label}</span>
+                    </p>
+                    <p className={`text-sm font-bold mt-0.5 ${item.textClass}`}>
+                      {formatIDR(item.omzet)}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      <span className="text-slate-200 font-semibold">{item.notaCount}</span> nota
+                      {' · '}
+                      <span className="text-slate-200 font-semibold">{item.itemQty}</span> pcs
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
