@@ -21,6 +21,7 @@ import {
   Sale,
   StockTransfer,
   PerfumeTier,
+  PosLockStatus,
 } from '@/types/domain';
 import {
   Search,
@@ -47,6 +48,7 @@ import {
   Beaker,
   Droplet,
   Wine,
+  Banknote,
   Info,
   Edit3,
   Truck,
@@ -118,6 +120,7 @@ export default function CashierPOSPage() {
   const [closingCashInput, setClosingCashInput] = useState<string>('');
   const [sessionNotes, setSessionNotes] = useState<string>('');
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
+  const [posLockStatus, setPosLockStatus] = useState<PosLockStatus | null>(null);
 
   // State Katalog Produk & Stok Toko (Instant Cache-First)
   const [products, setProducts] = useState<Product[]>(() => {
@@ -266,6 +269,7 @@ export default function CashierPOSPage() {
       // Sesi kasir
       if (sessRes) {
         setSession(sessRes.session || null);
+        setPosLockStatus(sessRes.lock_status || null);
         try {
           if (sessRes.session) {
             localStorage.setItem('bb_pos_session_cache', JSON.stringify(sessRes.session));
@@ -327,6 +331,37 @@ export default function CashierPOSPage() {
     loadInitialData();
   }, []);
 
+  // Auto-poll status persetujuan Super Admin ketika POS kasir terkunci (setiap 8 detik)
+  useEffect(() => {
+    if (!posLockStatus?.is_locked) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/pos/session');
+        const data = await res.json();
+        if (data && data.lock_status !== undefined) {
+          if (!data.lock_status?.is_locked) {
+            setPosLockStatus(null);
+            loadInitialData(true);
+          } else {
+            setPosLockStatus(data.lock_status);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to poll POS lock status:', err);
+      }
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [posLockStatus?.is_locked]);
+
+  // Cek apakah masih ada pengajuan setor kas pending yang mengunci buka shift
+  const hasPendingDeposit = Boolean(
+    posLockStatus?.pending_deposit ||
+    posLockStatus?.lock_type === 'PENDING_DEPOSIT' ||
+    posLockStatus?.lock_type === 'BOTH'
+  );
+
   // Filter Sub-List untuk Racik Parfum (Hanya yang memiliki stok di cabang ini)
   const bibitProducts = useMemo(() => {
     return products.filter((p) => (p.product_type === 'BIBIT' || p.is_blendable) && (inventoryMap[p.id] ?? 0) > 0);
@@ -365,6 +400,12 @@ export default function CashierPOSPage() {
   const handleBarcodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchQuery.trim()) {
       e.preventDefault();
+      if (posLockStatus?.is_locked) {
+        alert(
+          `TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}\n\nKasir tidak dapat memproses transaksi baru sampai pengajuan disetujui atau ditolak oleh Super Admin.`
+        );
+        return;
+      }
       const exactMatch = products.find(
         (p) =>
           p.barcode === searchQuery.trim() ||
@@ -379,6 +420,13 @@ export default function CashierPOSPage() {
 
   // 3. Logika Keranjang & Transaksi Manual
   const addToCart = (product: Product, qtyToAdd = 1, customPrice?: number, customName?: string) => {
+    if (posLockStatus?.is_locked) {
+      alert(
+        `TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}\n\nKasir tidak dapat menambah barang ke keranjang atau memproses transaksi baru sampai pengajuan disetujui atau ditolak oleh Super Admin.`
+      );
+      return;
+    }
+
     const stockAvailable = inventoryMap[product.id] || 0;
     const existingIndex = cart.findIndex((item) => item.product.id === product.id);
     const currentQtyInCart = existingIndex > -1 ? cart[existingIndex].quantity : 0;
@@ -410,12 +458,20 @@ export default function CashierPOSPage() {
   };
 
   const updateItemCustomPrice = (productId: string, newPrice: number) => {
+    if (posLockStatus?.is_locked) {
+      alert(`TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}`);
+      return;
+    }
     setCart((prev) =>
       prev.map((it) => (it.product.id === productId ? { ...it, custom_price: Math.max(0, newPrice) } : it))
     );
   };
 
   const setExactQuantity = (productId: string, exactQty: number) => {
+    if (posLockStatus?.is_locked) {
+      alert(`TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}`);
+      return;
+    }
     const stockAvailable = inventoryMap[productId] || 0;
     const item = cart.find((c) => c.product.id === productId);
     const unit = formatProductUnit(item?.product);
@@ -434,6 +490,10 @@ export default function CashierPOSPage() {
   };
 
   const handleQuantityInputChange = (productId: string, val: string) => {
+    if (posLockStatus?.is_locked) {
+      alert(`TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}`);
+      return;
+    }
     const clean = val.replace(/[^0-9]/g, '');
     const num = clean === '' ? 0 : parseInt(clean, 10);
     const stockAvailable = inventoryMap[productId] || 9999;
@@ -462,6 +522,10 @@ export default function CashierPOSPage() {
   };
 
   const updateQuantity = (productId: string, delta: number) => {
+    if (posLockStatus?.is_locked) {
+      alert(`TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}`);
+      return;
+    }
     const stockAvailable = inventoryMap[productId] || 0;
     const item = cart.find((c) => c.product.id === productId);
     const unit = formatProductUnit(item?.product);
@@ -480,7 +544,7 @@ export default function CashierPOSPage() {
           return it;
         })
         .filter((it) => it.quantity > 0)
-      );
+    );
   };
 
   const removeFromCart = (productId: string) => {
@@ -490,6 +554,12 @@ export default function CashierPOSPage() {
   // Logika Racik / Campur Bibit Parfum (Custom Blend)
   const handleAddBlendToCart = (e: React.FormEvent) => {
     e.preventDefault();
+    if (posLockStatus?.is_locked) {
+      alert(
+        `TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}\n\nKasir tidak dapat meracik parfum atau memproses transaksi baru sampai pengajuan disetujui atau ditolak oleh Super Admin.`
+      );
+      return;
+    }
 
     const bibit1 = products.find((p) => p.id === blendBibit1Id);
     if (!bibit1) {
@@ -594,6 +664,17 @@ export default function CashierPOSPage() {
     try {
       setSessionSubmitting(true);
       if (sessionAction === 'OPEN') {
+        if (hasPendingDeposit) {
+          const depositAmount = posLockStatus?.pending_deposit?.amount
+            ? ` sebesar Rp ${posLockStatus.pending_deposit.amount.toLocaleString('id-ID')}`
+            : '';
+          alert(
+            `BUKA SHIFT DITOLAK:\n\nMasih terdapat pengajuan setor kas${depositAmount} yang sedang menunggu persetujuan Super Admin.\n\nKasir belum dapat membuka shift baru hingga pengajuan disetujui atau ditolak.`
+          );
+          setSessionSubmitting(false);
+          return;
+        }
+
         const res = await fetch('/api/pos/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -676,6 +757,10 @@ export default function CashierPOSPage() {
       setIsSessionModalOpen(true);
       return;
     }
+    if (posLockStatus?.is_locked) {
+      alert(`TRANSAKSI DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}\n\nMohon tunggu hingga Super Admin menyetujui atau menolak pengajuan tersebut.`);
+      return;
+    }
     if (cart.length === 0) {
       alert('Keranjang belanja masih kosong.');
       return;
@@ -725,6 +810,9 @@ export default function CashierPOSPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (data.lock_status) {
+          setPosLockStatus(data.lock_status);
+        }
         throw new Error(data.error || 'Checkout gagal.');
       }
 
@@ -756,6 +844,67 @@ export default function CashierPOSPage() {
         <Sidebar role={user?.role || 'CASHIER'} />
 
         <main className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#090D16] to-[#04060A]">
+          {/* POS LOCK STATUS NOTIFICATION BANNER */}
+          {posLockStatus?.is_locked && (
+            <div className="bg-amber-950/90 border-b border-amber-500/50 px-3 sm:px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-200 backdrop-blur shrink-0 animate-in fade-in duration-200 shadow-xl">
+              <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 mt-0.5">
+                  <Lock className="w-4 h-4 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong className="text-amber-300 font-bold text-sm">
+                      POS Kasir Dikunci Sementara (Menunggu Approval Super Admin)
+                    </strong>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
+                      {posLockStatus.lock_type === 'PENDING_DEPOSIT'
+                        ? 'SETOR KAS PENDING'
+                        : posLockStatus.lock_type === 'PENDING_VOID'
+                        ? 'BATAL TRANSAKSI PENDING'
+                        : 'SETOR KAS & VOID PENDING'}
+                    </span>
+                  </div>
+                  <p className="text-amber-100/90 text-xs mt-1 leading-relaxed">{posLockStatus.reason}</p>
+                  <p className="text-[11px] text-amber-400/90 font-medium mt-0.5">
+                    Demi menjaga keakuratan buku kas & stok persediaan, transaksi kasir ditangguhkan sampai pengajuan disetujui atau ditolak Super Admin.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                {(posLockStatus.lock_type === 'PENDING_DEPOSIT' || posLockStatus.lock_type === 'BOTH') && (
+                  <a
+                    href="/cashier/deposits"
+                    className="px-3 py-1.5 rounded-lg bg-amber-900/60 hover:bg-amber-900 border border-amber-600/60 text-amber-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <Banknote className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Lihat Setoran</span>
+                  </a>
+                )}
+
+                {(posLockStatus.lock_type === 'PENDING_VOID' || posLockStatus.lock_type === 'BOTH') && (
+                  <a
+                    href="/cashier/history"
+                    className="px-3 py-1.5 rounded-lg bg-amber-900/60 hover:bg-amber-900 border border-amber-600/60 text-amber-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                  >
+                    <Receipt className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Lihat Void</span>
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => loadInitialData(true)}
+                  className="px-3 py-1.5 rounded-lg bg-[#D4AF37] hover:bg-[#E5C365] text-slate-950 font-bold text-xs flex items-center gap-1.5 shadow-md shadow-[#D4AF37]/20 transition"
+                  title="Perbarui Status Persetujuan Super Admin"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Cek Approval</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* TOP POS HEADER BAR (Responsive for Phone & Desktop) */}
           <div className="p-2.5 sm:p-4 border-b border-[#1E293B] bg-[#0B101D]/90 backdrop-blur flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center justify-between gap-2">
@@ -859,14 +1008,32 @@ export default function CashierPOSPage() {
                   variant="gold"
                   size="sm"
                   onClick={() => {
+                    if (hasPendingDeposit) {
+                      const depositAmount = posLockStatus?.pending_deposit?.amount
+                        ? ` sebesar Rp ${posLockStatus.pending_deposit.amount.toLocaleString('id-ID')}`
+                        : '';
+                      alert(
+                        `TIDAK DAPAT MEMBUKA SHIFT:\n\nMasih terdapat pengajuan setor kas${depositAmount} ke Super Admin yang belum disetujui (status: PENDING).\n\nKasir tidak dapat membuka shift laci kasir baru sampai pengajuan disetujui atau ditolak oleh Super Admin.`
+                      );
+                      return;
+                    }
                     setSessionAction('OPEN');
                     setOpeningCashInput(availableCash.toString());
                     setIsSessionModalOpen(true);
                   }}
-                  className="shadow-lg shadow-[#D4AF37]/20 text-[11px] py-1 px-2.5 h-auto whitespace-nowrap"
+                  className={`text-[11px] py-1 px-2.5 h-auto whitespace-nowrap ${
+                    hasPendingDeposit
+                      ? 'bg-amber-950/80 text-amber-300 border border-amber-600/60 shadow-none'
+                      : 'shadow-lg shadow-[#D4AF37]/20'
+                  }`}
+                  title={hasPendingDeposit ? 'Buka shift kasir terkunci (Menunggu approval setor kas)' : 'Buka Shift Kasir'}
                 >
-                  <Unlock className="w-3.5 h-3.5 mr-1" />
-                  Buka Kasir
+                  {hasPendingDeposit ? (
+                    <Lock className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                  ) : (
+                    <Unlock className="w-3.5 h-3.5 mr-1" />
+                  )}
+                  <span>{hasPendingDeposit ? 'Shift Terkunci (Setor Kas)' : 'Buka Kasir'}</span>
                 </Button>
               )}
             </div>
@@ -883,14 +1050,28 @@ export default function CashierPOSPage() {
                     variant="gold"
                     size="sm"
                     onClick={() => {
+                      if (posLockStatus?.is_locked) {
+                        alert(
+                          `TRANSAKSI POS DIKUNCI SEMENTARA:\n\n${posLockStatus.reason}\n\nKasir tidak dapat meracik parfum atau memproses transaksi baru sampai pengajuan disetujui atau ditolak oleh Super Admin.`
+                        );
+                        return;
+                      }
                       if (bibitProducts.length > 0 && !blendBibit1Id) {
                         setBlendBibit1Id(bibitProducts[0].id);
                       }
                       setIsBlendModalOpen(true);
                     }}
-                    className="whitespace-nowrap shadow-lg shadow-[#D4AF37]/20 flex items-center gap-1.5"
+                    className={`whitespace-nowrap flex items-center gap-1.5 ${
+                      posLockStatus?.is_locked
+                        ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed shadow-none'
+                        : 'shadow-lg shadow-[#D4AF37]/20'
+                    }`}
                   >
-                    <FlaskConical className="w-4 h-4" />
+                    {posLockStatus?.is_locked ? (
+                      <Lock className="w-4 h-4 text-amber-500" />
+                    ) : (
+                      <FlaskConical className="w-4 h-4" />
+                    )}
                     <span>🧪 Racik / Campur Bibit</span>
                   </Button>
                 </div>
@@ -944,7 +1125,11 @@ export default function CashierPOSPage() {
                     <div
                       key={p.id}
                       onClick={() => addToCart(p, p.product_type === 'BIBIT' ? 10 : 1)}
-                      className="group relative rounded-2xl border transition-all text-left p-2.5 sm:p-3.5 flex flex-col justify-between select-none bg-gradient-to-b from-[#0F172A] to-[#0A0E1A] border-[#1E293B] hover:border-[#D4AF37]/50 hover:shadow-xl hover:shadow-[#D4AF37]/5 cursor-pointer active:scale-[0.98]"
+                      className={`group relative rounded-2xl border transition-all text-left p-2.5 sm:p-3.5 flex flex-col justify-between select-none bg-gradient-to-b from-[#0F172A] to-[#0A0E1A] ${
+                        posLockStatus?.is_locked
+                          ? 'border-slate-800 opacity-65 cursor-not-allowed'
+                          : 'border-[#1E293B] hover:border-[#D4AF37]/50 hover:shadow-xl hover:shadow-[#D4AF37]/5 cursor-pointer active:scale-[0.98]'
+                      }`}
                     >
                       <div>
                         <div className="flex items-start justify-between gap-1 mb-2">
@@ -1396,14 +1581,38 @@ export default function CashierPOSPage() {
                   </div>
                 </div>
 
+                {posLockStatus?.is_locked && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold text-amber-200">Transaksi POS Dikunci Sementara</p>
+                      <p className="text-[11px] text-amber-300/90 leading-relaxed">{posLockStatus.reason}</p>
+                      <p className="text-[10px] text-amber-400/90 font-medium">Menunggu persetujuan Super Admin agar kasir dapat kembali bertransaksi.</p>
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   variant="gold"
                   onClick={handleOpenPayment}
-                  disabled={cart.length === 0}
-                  className="w-full py-3.5 text-sm font-bold shadow-xl shadow-[#D4AF37]/10 flex items-center justify-center gap-2"
+                  disabled={cart.length === 0 || posLockStatus?.is_locked}
+                  className={`w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 ${
+                    posLockStatus?.is_locked
+                      ? 'bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed opacity-80'
+                      : 'shadow-xl shadow-[#D4AF37]/10'
+                  }`}
                 >
-                  <CreditCard className="w-4 h-4" />
-                  Bayar Sekarang ({formatIDR(finalAmount)})
+                  {posLockStatus?.is_locked ? (
+                    <>
+                      <Lock className="w-4 h-4 text-amber-400" />
+                      <span>Terkunci (Menunggu Super Admin)</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4 h-4" />
+                      <span>Bayar Sekarang ({formatIDR(finalAmount)})</span>
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -1430,14 +1639,21 @@ export default function CashierPOSPage() {
                 <p className="text-sm font-black text-[#D4AF37] font-mono">{formatIDR(finalAmount)}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsMobileCartOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#E5C365] text-[#070A0F] font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-[#D4AF37]/20 active:scale-95 transition"
-            >
-              <span>Keranjang &amp; Bayar</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {posLockStatus?.is_locked ? (
+              <div className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-950/60 border border-amber-800/60 px-3 py-2 rounded-xl">
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span className="font-bold text-[11px]">POS Dikunci</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsMobileCartOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#D4AF37] to-[#E5C365] text-[#070A0F] font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-[#D4AF37]/20 active:scale-95 transition"
+              >
+                <span>Keranjang &amp; Bayar</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </main>
       </div>
@@ -1451,6 +1667,24 @@ export default function CashierPOSPage() {
         <div className="space-y-4">
           {sessionAction === 'OPEN' ? (
             <>
+              {hasPendingDeposit && (
+                <div className="p-3.5 rounded-xl bg-amber-950/90 border border-amber-500/50 text-amber-200 text-xs flex items-start gap-2.5 shadow-lg">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold text-amber-200 text-sm">⛔ Buka Shift Laci Kasir Terkunci</p>
+                    <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                      Masih terdapat pengajuan setor kas ke Super Admin yang sedang menunggu persetujuan (status: PENDING).
+                      {posLockStatus?.pending_deposit?.amount && (
+                        <span> Nominal: <strong className="text-white">Rp {posLockStatus.pending_deposit.amount.toLocaleString('id-ID')}</strong>.</span>
+                      )}
+                    </p>
+                    <p className="text-[10px] text-amber-300 font-medium">
+                      Kasir belum dapat membuka shift laci kasir baru sampai Super Admin menyetujui atau menolak pengajuan setor kas tersebut.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/60 to-slate-900 border border-emerald-500/40 text-xs space-y-1">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-300 font-medium">Sisa Cash Tersedia di Toko:</span>
@@ -1547,12 +1781,14 @@ export default function CashierPOSPage() {
             <Button
               variant={sessionAction === 'OPEN' ? 'gold' : 'danger'}
               onClick={handleSessionSubmit}
-              disabled={sessionSubmitting}
+              disabled={sessionSubmitting || (sessionAction === 'OPEN' && hasPendingDeposit)}
             >
               {sessionSubmitting
                 ? 'Memproses...'
                 : sessionAction === 'OPEN'
-                ? 'Konfirmasi Buka Kasir'
+                ? hasPendingDeposit
+                  ? '🔒 Buka Shift Dikunci'
+                  : 'Konfirmasi Buka Kasir'
                 : 'Tutup & Rekonsiliasi'}
             </Button>
           </div>

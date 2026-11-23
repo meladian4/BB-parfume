@@ -291,6 +291,14 @@ export interface CashDeposit {
   store?: Store;
 }
 
+export interface PosLockStatus {
+  is_locked: boolean;
+  reason?: string;
+  lock_type?: 'PENDING_DEPOSIT' | 'PENDING_VOID' | 'BOTH' | null;
+  pending_deposit?: CashDeposit;
+  pending_void?: Sale;
+}
+
 export interface Member {
   id: string;
   name: string;
@@ -411,6 +419,7 @@ export type ExpenseCategory =
   | 'PACKAGING'
   | 'MARKETING'
   | 'MAINTENANCE'
+  | 'SUPPLIES'
   | 'OTHER';
 
 export interface Expense {

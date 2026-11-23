@@ -16,7 +16,8 @@ export async function GET(request: NextRequest) {
 
     const session = await db.getCurrentCashSession(storeId, authUser.id);
     const availableCash = await db.getStoreAvailableCash(storeId);
-    return NextResponse.json({ session, available_cash: availableCash });
+    const lockStatus = await db.checkStorePosLockStatus(storeId);
+    return NextResponse.json({ session, available_cash: availableCash, lock_status: lockStatus });
   } catch (error: any) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
@@ -44,6 +45,20 @@ export async function POST(request: NextRequest) {
     const { action } = body;
 
     if (action === 'OPEN') {
+      const lockStatus = await db.checkStorePosLockStatus(storeId);
+      if (lockStatus.pending_deposit || lockStatus.lock_type === 'PENDING_DEPOSIT' || lockStatus.lock_type === 'BOTH') {
+        const depositAmount = lockStatus.pending_deposit?.amount
+          ? ` sebesar Rp ${lockStatus.pending_deposit.amount.toLocaleString('id-ID')}`
+          : '';
+        return NextResponse.json(
+          {
+            error: `BUKA SHIFT DITOLAK: Masih terdapat pengajuan setor kas${depositAmount} yang sedang menunggu persetujuan (approval) Super Admin. Kasir belum dapat membuka shift baru hingga pengajuan disetujui atau ditolak.`,
+            lock_status: lockStatus,
+          },
+          { status: 403 }
+        );
+      }
+
       const openingCash = Number(body.opening_cash);
       if (isNaN(openingCash) || openingCash < 0) {
         return NextResponse.json(

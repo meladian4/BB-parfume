@@ -38,6 +38,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Safeguard Operasional: Pastikan POS tidak sedang terkunci akibat pengajuan setor kas atau void pending
+    const lockStatus = await db.checkStorePosLockStatus(effectiveStoreId);
+    if (lockStatus.is_locked) {
+      return NextResponse.json(
+        {
+          error: `TRANSAKSI POS DIKUNCI: ${lockStatus.reason}`,
+          lock_status: lockStatus,
+        },
+        { status: 403 }
+      );
+    }
+
     // Eksekusi transaksi atomik via repository
     const sale = await db.processSaleCheckout({
       store_id: effectiveStoreId, // Kunci ke cabang resmi user kasir

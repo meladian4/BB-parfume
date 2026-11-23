@@ -28,7 +28,8 @@ const CATEGORY_LABELS: Record<ExpenseCategory, { label: string; badge: string }>
   PACKAGING: { label: 'Kemasan & Paperbag Premium', badge: 'bg-emerald-900/40 text-emerald-300 border-emerald-700/50' },
   MARKETING: { label: 'Pemasaran & Promosi Sosmed', badge: 'bg-pink-900/40 text-pink-300 border-pink-700/50' },
   MAINTENANCE: { label: 'Pemeliharaan Display & AC', badge: 'bg-orange-900/40 text-orange-300 border-orange-700/50' },
-  OTHER: { label: 'Operasional Lain-lain', badge: 'bg-neutral-800 text-neutral-300 border-neutral-700' },
+  SUPPLIES: { label: 'Perlengkapan Kasir / ATK', badge: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/50' },
+  OTHER: { label: 'Lain-lain', badge: 'bg-neutral-800 text-neutral-300 border-neutral-700' },
 };
 
 export default function SuperAdminExpensesPage() {
@@ -47,6 +48,7 @@ export default function SuperAdminExpensesPage() {
   const [formStoreId, setFormStoreId] = useState('');
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [formCategory, setFormCategory] = useState<ExpenseCategory>('PACKAGING');
+  const [formOtherCustom, setFormOtherCustom] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formReceiptUrl, setFormReceiptUrl] = useState('');
@@ -115,6 +117,11 @@ export default function SuperAdminExpensesPage() {
 
     try {
       setSubmitting(true);
+      const finalDesc =
+        formCategory === 'OTHER' && formOtherCustom.trim()
+          ? `[${formOtherCustom.trim()}] ${formDescription.trim()}`
+          : formDescription.trim();
+
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,7 +129,7 @@ export default function SuperAdminExpensesPage() {
           store_id: formStoreId,
           expense_date: formDate,
           category: formCategory,
-          description: formDescription,
+          description: finalDesc,
           amount: numAmount,
           receipt_url: formReceiptUrl || null,
         }),
@@ -136,6 +143,7 @@ export default function SuperAdminExpensesPage() {
 
       // Reset form
       setFormDescription('');
+      setFormOtherCustom('');
       setFormAmount('');
       setFormReceiptUrl('');
       setIsAddModalOpen(false);
@@ -394,6 +402,10 @@ export default function SuperAdminExpensesPage() {
                   const isFromCashier =
                     item.created_by_user?.role === 'CASHIER' ||
                     item.created_by?.toLowerCase().includes('kasir');
+                  const isOther = item.category === 'OTHER';
+                  const customMatch = isOther ? item.description.match(/^\[(.*?)\]\s*(.*)$/) : null;
+                  const displayBadgeLabel = customMatch ? `Lain-lain: ${customMatch[1]}` : catInfo.label;
+                  const displayDesc = customMatch ? customMatch[2] : item.description;
 
                   return (
                     <tr key={item.id} className="hover:bg-neutral-800/40 transition-colors">
@@ -438,12 +450,12 @@ export default function SuperAdminExpensesPage() {
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] border font-medium ${catInfo.badge}`}
                         >
-                          {catInfo.label}
+                          {displayBadgeLabel}
                         </span>
                       </td>
 
                       <td className="py-3.5 px-4 text-neutral-200 font-medium">
-                        {item.description}
+                        {displayDesc}
                       </td>
 
                       <td className="py-3.5 px-4 text-right font-semibold font-mono text-white text-sm">
@@ -563,6 +575,24 @@ export default function SuperAdminExpensesPage() {
                 </select>
               </div>
             </div>
+
+            {formCategory === 'OTHER' && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1.5 animate-in fade-in">
+                <label className="block text-xs font-semibold text-amber-300">
+                  Nama / Jenis Beban Lain-lain (Opsional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Bensin Operasional, Konsumsi, Retribusi Tambahan..."
+                  value={formOtherCustom}
+                  onChange={(e) => setFormOtherCustom(e.target.value)}
+                  className="w-full bg-[#181C24] border border-amber-500/40 rounded-lg px-3 py-2 text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-[#D4AF37]"
+                />
+                <p className="text-[10px] text-amber-400/80">
+                  Jika diisi, nama ini akan tertera sebagai kategori khusus pada laporan keuangan &amp; audit.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-medium text-neutral-300 mb-1">

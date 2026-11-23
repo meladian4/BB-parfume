@@ -26,6 +26,7 @@ import {
   CashDeposit,
   CashDepositStatus,
   CashDepositMethod,
+  PosLockStatus,
   Member,
   PaymentMethod,
   PaymentStatus,
@@ -2266,6 +2267,18 @@ export const repository = {
       throw new Error(`Kasir ini sudah memiliki sesi kasir aktif yang belum ditutup (ID: ${existing.id}).`);
     }
 
+    // Safeguard: Cegah buka shift baru jika masih ada pengajuan setor kas yang PENDING ke Super Admin
+    const pendingDeposit = (globalState.cashDeposits || []).find(
+      (d) => d.store_id === data.store_id && d.status === 'PENDING'
+    );
+    if (pendingDeposit) {
+      throw new Error(
+        `BUKA SHIFT DITOLAK: Masih terdapat pengajuan setor kas sebesar Rp ${pendingDeposit.amount.toLocaleString(
+          'id-ID'
+        )} yang sedang menunggu persetujuan (approval) Super Admin. Kasir belum dapat membuka shift baru hingga pengajuan disetujui atau ditolak.`
+      );
+    }
+
     const newSession: CashSession = {
       id: `cs-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       store_id: data.store_id,
@@ -2471,6 +2484,48 @@ export const repository = {
     const totalExpenses = expensesAfterClose.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     return Math.max(0, baseCash - totalDeposited - totalExpenses);
+  },
+
+  async checkStorePosLockStatus(storeId: string): Promise<PosLockStatus> {
+    const pendingDeposit = (globalState.cashDeposits || []).find(
+      (d) => d.store_id === storeId && d.status === 'PENDING'
+    );
+    const pendingVoid = (globalState.sales || []).find(
+      (s) => s.store_id === storeId && s.sale_status === 'VOID_PENDING'
+    );
+
+    if (pendingDeposit && pendingVoid) {
+      return {
+        is_locked: true,
+        lock_type: 'BOTH',
+        reason: `Terdapat pengajuan setor kas (Rp ${pendingDeposit.amount.toLocaleString('id-ID')}) dan pengajuan batal transaksi (${pendingVoid.invoice_number}) yang sedang menunggu persetujuan Super Admin. POS Kasir dikunci sementara hingga disetujui atau ditolak.`,
+        pending_deposit: pendingDeposit,
+        pending_void: pendingVoid,
+      };
+    }
+
+    if (pendingDeposit) {
+      return {
+        is_locked: true,
+        lock_type: 'PENDING_DEPOSIT',
+        reason: `Terdapat pengajuan setor kas sebesar Rp ${pendingDeposit.amount.toLocaleString('id-ID')} yang sedang menunggu persetujuan Super Admin. POS Kasir dikunci sementara hingga disetujui atau ditolak.`,
+        pending_deposit: pendingDeposit,
+      };
+    }
+
+    if (pendingVoid) {
+      return {
+        is_locked: true,
+        lock_type: 'PENDING_VOID',
+        reason: `Terdapat pengajuan pembatalan (Void) transaksi ${pendingVoid.invoice_number} yang sedang menunggu persetujuan Super Admin. POS Kasir dikunci sementara hingga disetujui atau ditolak.`,
+        pending_void: pendingVoid,
+      };
+    }
+
+    return {
+      is_locked: false,
+      lock_type: null,
+    };
   },
 
   async getCashDeposits(options?: {
@@ -3012,6 +3067,12 @@ export const repository = {
     const cashier = globalState.profiles.find((p) => p.id === data.cashier_id);
     if (!cashier) {
       throw new Error(`Profil kasir dengan ID '${data.cashier_id}' tidak ditemukan.`);
+    }
+
+    // Safeguard Operasional: Cek apakah POS toko sedang dikunci menunggu approval setor kas atau void
+    const lockStatus = await this.checkStorePosLockStatus(data.store_id);
+    if (lockStatus.is_locked) {
+      throw new Error(`TRANSAKSI POS DIKUNCI: ${lockStatus.reason}`);
     }
 
     // 3. Validasi Keranjang Belanja

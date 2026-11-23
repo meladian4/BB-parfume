@@ -171,6 +171,27 @@ export default function CashierDepositsPage() {
             </div>
           </div>
 
+          {/* Warning Banner: POS Locked while deposit is pending */}
+          {pendingDeposits.length > 0 && (
+            <div className="p-3.5 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs flex items-start sm:items-center justify-between gap-3 shadow-lg animate-in fade-in">
+              <div className="flex items-start sm:items-center gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                  <strong className="text-amber-300 font-bold">POS Kasir Sedang Dikunci Sementara:</strong>{' '}
+                  <span>
+                    Terdapat {pendingDeposits.length} pengajuan setor kas (Total: {formatIDR(totalPendingAmount)}) yang sedang menunggu persetujuan Super Admin. Kasir belum dapat melayani transaksi penjualan baru demi keakuratan pembukuan uang fisik kasir.
+                  </span>
+                </div>
+              </div>
+              <Link
+                href="/cashier"
+                className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold shrink-0 transition"
+              >
+                Cek POS
+              </Link>
+            </div>
+          )}
+
           {/* Cards Ringkasan Kas */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Card 1: Available Cash in Store */}

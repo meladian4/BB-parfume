@@ -187,6 +187,20 @@ export default function SuperAdminDepositsPage() {
         </div>
       </div>
 
+      {pendingList.length > 0 && (
+        <div className="p-3.5 rounded-xl bg-amber-950/70 border border-amber-500/50 text-amber-200 text-xs flex items-center justify-between gap-3 shadow-lg animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <div>
+              <strong className="text-amber-300 font-bold">Safeguard Operasional POS Aktif:</strong>{' '}
+              <span>
+                Terdapat {pendingList.length} pengajuan setor kas berstatus PENDING (Total: {formatIDR(totalPendingRp)}). Cabang toko terkait saat ini dalam kondisi <strong>POS Kasir Terkunci</strong> dan tidak dapat melayani transaksi baru sampai disetujui atau ditolak.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cards Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Card 1: Pending Approval */}

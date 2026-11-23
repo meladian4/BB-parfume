@@ -402,11 +402,14 @@ export default function CashierHistoryPage() {
               <div className="flex items-center gap-3">
                 <ShieldAlert className="w-6 h-6 text-amber-400 shrink-0 animate-pulse" />
                 <div>
-                  <p className="text-xs font-semibold text-amber-200">
-                    Otoritas Persetujuan: {pendingVoidSales.length} Nota Mengajukan Pembatalan (Void)
+                  <p className="text-xs font-semibold text-amber-200 flex items-center gap-2 flex-wrap">
+                    <span>Otoritas Persetujuan: {pendingVoidSales.length} Nota Mengajukan Pembatalan (Void)</span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
+                      POS Kasir Dikunci Sementara
+                    </span>
                   </p>
                   <p className="text-[11px] text-amber-300/80">
-                    Kasir mengajukan pembatalan karena kesalahan input / transaksi gagal. Menunggu verifikasi Super Admin.
+                    Kasir mengajukan pembatalan nota. Selama menunggu approval Super Admin, POS Kasir cabang terkait dinonaktifkan sementara untuk menjaga akurasi pembukuan dan persediaan.
                   </p>
                 </div>
               </div>

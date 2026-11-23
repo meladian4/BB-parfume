@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Lock,
   Unlock,
   Receipt,
@@ -35,6 +36,7 @@ export default function CashierSessionPage() {
   const [closingNotes, setClosingNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [posLockStatus, setPosLockStatus] = useState<any>(null);
 
   const loadData = async () => {
     try {
@@ -45,6 +47,9 @@ export default function CashierSessionPage() {
       ]);
 
       setUser(uRes.user);
+      if (sessRes.lock_status) {
+        setPosLockStatus(sessRes.lock_status);
+      }
       if (sessRes.session) {
         setSession(sessRes.session);
         setActualCashInput(String(sessRes.session.expected_cash || ''));
@@ -67,8 +72,23 @@ export default function CashierSessionPage() {
     loadData();
   }, []);
 
+  const hasPendingDeposit = Boolean(
+    posLockStatus?.pending_deposit ||
+    posLockStatus?.lock_type === 'PENDING_DEPOSIT' ||
+    posLockStatus?.lock_type === 'BOTH'
+  );
+
   const handleOpenSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (hasPendingDeposit) {
+      const depositAmount = posLockStatus?.pending_deposit?.amount
+        ? ` sebesar Rp ${posLockStatus.pending_deposit.amount.toLocaleString('id-ID')}`
+        : '';
+      setErrorMsg(
+        `BUKA SHIFT DITOLAK: Masih terdapat pengajuan setor kas${depositAmount} yang sedang menunggu persetujuan (approval) Super Admin. Kasir belum dapat membuka shift baru.`
+      );
+      return;
+    }
     try {
       setSubmitting(true);
       setErrorMsg('');
@@ -289,6 +309,24 @@ export default function CashierSessionPage() {
                 </p>
               </div>
 
+              {hasPendingDeposit && (
+                <div className="p-4 rounded-xl bg-amber-950/70 border border-amber-500/50 text-amber-200 text-xs text-left space-y-2 max-w-md mx-auto">
+                  <div className="flex items-center gap-2 text-amber-300 font-bold">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Buka Shift Dikunci Sementara</span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Masih terdapat pengajuan setor kas ke Super Admin yang sedang menunggu persetujuan (status: PENDING).
+                    {posLockStatus?.pending_deposit?.amount && (
+                      <span> Nominal: <strong className="text-white">Rp {posLockStatus.pending_deposit.amount.toLocaleString('id-ID')}</strong>.</span>
+                    )}
+                  </p>
+                  <p className="text-[10px] text-amber-400 font-medium">
+                    Harap menunggu persetujuan Super Admin sebelum membuka shift kasir baru.
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleOpenSession} className="space-y-4 max-w-md mx-auto text-left">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1">
@@ -297,9 +335,10 @@ export default function CashierSessionPage() {
                   <input
                     type="number"
                     required
+                    disabled={hasPendingDeposit}
                     value={openingCashInput}
                     onChange={(e) => setOpeningCashInput(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-[#D4AF37]"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white font-mono focus:border-[#D4AF37] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
@@ -309,18 +348,23 @@ export default function CashierSessionPage() {
                   </label>
                   <input
                     type="text"
+                    disabled={hasPendingDeposit}
                     value={openingNotes}
                     onChange={(e) => setOpeningNotes(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-[#D4AF37]"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-[#D4AF37] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
 
                 <Button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full h-12 min-h-[44px] bg-gradient-to-r from-[#D4AF37] to-[#E5C365] hover:brightness-105 text-[#070A0F] font-bold py-2.5 rounded-xl shadow-lg shadow-amber-500/20 text-sm active:scale-[0.98] transition touch-manipulation"
+                  disabled={submitting || hasPendingDeposit}
+                  className={`w-full h-12 min-h-[44px] font-bold py-2.5 rounded-xl text-sm transition touch-manipulation ${
+                    hasPendingDeposit
+                      ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-[#D4AF37] to-[#E5C365] hover:brightness-105 text-[#070A0F] shadow-lg shadow-amber-500/20 active:scale-[0.98]'
+                  }`}
                 >
-                  {submitting ? 'Membuka...' : 'Buka Shift Kasir Baru'}
+                  {hasPendingDeposit ? '🔒 Buka Shift Dikunci (Setor Kas Pending)' : submitting ? 'Membuka...' : 'Buka Shift Kasir Baru'}
                 </Button>
               </form>
             </Card>

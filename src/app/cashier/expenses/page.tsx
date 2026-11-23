@@ -51,9 +51,9 @@ const CATEGORY_INFO: Record<
     badge: 'bg-amber-950/70 text-amber-300 border-amber-700/60',
     desc: 'Sapu, pel, sabun cuci display, servis AC, ganti lampu',
   },
-  OTHER: {
+  SUPPLIES: {
     label: 'Perlengkapan Kasir / ATK',
-    badge: 'bg-neutral-800 text-neutral-300 border-neutral-700',
+    badge: 'bg-indigo-950/70 text-indigo-300 border-indigo-700/60',
     desc: 'Kertas roll thermal struk kasir, lakban, pulpen, operasional toko',
   },
   SALARY: {
@@ -70,6 +70,11 @@ const CATEGORY_INFO: Record<
     label: 'Promosi Cabang',
     badge: 'bg-pink-950/70 text-pink-300 border-pink-700/60',
     desc: 'Banner promo toko / selebaran',
+  },
+  OTHER: {
+    label: 'Lain-lain (Beban Khusus / Bebas)',
+    badge: 'bg-neutral-800 text-neutral-300 border-neutral-700',
+    desc: 'Biaya operasional lainnya yang tidak termasuk dalam kategori di atas',
   },
 };
 
@@ -91,6 +96,7 @@ export default function CashierExpensesPage() {
   const [formStoreId, setFormStoreId] = useState('');
   const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [formCategory, setFormCategory] = useState<ExpenseCategory>('OTHER');
+  const [formOtherCustom, setFormOtherCustom] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formReceiptNote, setFormReceiptNote] = useState('');
@@ -255,6 +261,11 @@ export default function CashierExpensesPage() {
 
     try {
       setSubmitting(true);
+      const finalDescription =
+        formCategory === 'OTHER' && formOtherCustom.trim()
+          ? `[${formOtherCustom.trim()}] ${formDescription.trim()}`
+          : formDescription.trim();
+
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -262,7 +273,7 @@ export default function CashierExpensesPage() {
           store_id: formStoreId,
           expense_date: formDate,
           category: formCategory,
-          description: formDescription.trim(),
+          description: finalDescription,
           amount: numAmount,
           receipt_url: formReceiptNote.trim() || 'Nota fisik disimpan di kasir toko',
           created_by: user?.id || 'u0000000-0000-0000-0000-000000000003',
@@ -276,6 +287,7 @@ export default function CashierExpensesPage() {
 
       // Reset form
       setFormDescription('');
+      setFormOtherCustom('');
       setFormAmount('');
       setFormReceiptNote('');
       setIsAddModalOpen(false);
@@ -576,6 +588,11 @@ export default function CashierExpensesPage() {
                     <tbody className="divide-y divide-slate-800 text-slate-300">
                       {filteredExpenses.map((exp) => {
                         const cat = CATEGORY_INFO[exp.category] || CATEGORY_INFO.OTHER;
+                        const isOther = exp.category === 'OTHER';
+                        const customMatch = isOther ? exp.description.match(/^\[(.*?)\]\s*(.*)$/) : null;
+                        const displayBadgeLabel = customMatch ? `Lain-lain: ${customMatch[1]}` : cat.label;
+                        const displayDesc = customMatch ? customMatch[2] : exp.description;
+
                         return (
                           <tr key={exp.id} className="hover:bg-slate-800/40 transition-colors">
                             <td className="py-3.5 px-4 font-mono font-medium text-slate-200">
@@ -592,13 +609,13 @@ export default function CashierExpensesPage() {
                               <span
                                 className={`inline-block px-2.5 py-1 rounded-lg text-[11px] border font-semibold ${cat.badge}`}
                               >
-                                {cat.label}
+                                {displayBadgeLabel}
                               </span>
                             </td>
 
                             <td className="py-3.5 px-4">
                               <div className="font-semibold text-white text-xs">
-                                {exp.description}
+                                {displayDesc}
                               </div>
                               {exp.receipt_url && (
                                 <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
@@ -726,6 +743,26 @@ export default function CashierExpensesPage() {
               </select>
             </div>
           </div>
+
+          {/* Input Opsional Kategori Lain-Lain */}
+          {formCategory === 'OTHER' && (
+            <div className="space-y-1.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 animate-in fade-in">
+              <label className="text-xs font-semibold text-amber-300 flex items-center justify-between">
+                <span>Nama / Jenis Kategori Lain-lain (Opsional)</span>
+                <span className="text-[10px] text-amber-400/80">Bisa diisi kategori khusus</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Bensin, Uang Sampah, Konsumsi Lembur..."
+                value={formOtherCustom}
+                onChange={(e) => setFormOtherCustom(e.target.value)}
+                className="w-full px-3 py-2 bg-[#0A0E1A] border border-amber-500/40 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#D4AF37]"
+              />
+              <p className="text-[10px] text-amber-400/80">
+                Jika diisi, nama ini otomatis tertera sebagai kategori khusus pada laporan kasir &amp; Super Admin.
+              </p>
+            </div>
+          )}
 
           {/* Nominal Biaya */}
           <div className="space-y-1">
