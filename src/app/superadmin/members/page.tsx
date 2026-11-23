@@ -28,6 +28,8 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 
+type DatePreset = 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'THIS_MONTH' | 'ALL' | 'CUSTOM';
+
 export default function SuperAdminMembersPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -35,7 +37,9 @@ export default function SuperAdminMembersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('ALL');
-  const [dateFilter, setDateFilter] = useState('');
+  const [datePreset, setDatePreset] = useState<DatePreset>('ALL');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'POINTS_DESC'>('DATE_DESC');
 
   // State Modal Tambah Member
@@ -290,9 +294,41 @@ export default function SuperAdminMembersPage() {
     ])
   );
 
+  const getTodayStr = () => new Date().toISOString().slice(0, 10);
+  const getYesterdayStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().slice(0, 10);
+  };
+  const getLast7DaysStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().slice(0, 10);
+  };
+  const getMonthStartStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+
   const dateFilteredMembers = members.filter((m) => {
-    if (!dateFilter) return true;
-    return (m.created_at || '').slice(0, 10) === dateFilter;
+    const dateStr = (m.created_at || '').slice(0, 10);
+    if (datePreset === 'TODAY') {
+      return dateStr === getTodayStr();
+    }
+    if (datePreset === 'YESTERDAY') {
+      return dateStr === getYesterdayStr();
+    }
+    if (datePreset === 'LAST_7') {
+      return dateStr >= getLast7DaysStr();
+    }
+    if (datePreset === 'THIS_MONTH') {
+      return dateStr >= getMonthStartStr();
+    }
+    if (datePreset === 'CUSTOM') {
+      if (customStartDate && dateStr < customStartDate) return false;
+      if (customEndDate && dateStr > customEndDate) return false;
+    }
+    return true;
   });
 
   const employeeEffortSummary = employeeOptions.map((empName) => {
@@ -447,32 +483,6 @@ export default function SuperAdminMembersPage() {
             </div>
 
             <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
-              <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span className="text-slate-400">Tanggal:</span>
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => {
-                  setDateFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer [color-scheme:dark]"
-              />
-              {dateFilter && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDateFilter('');
-                    setCurrentPage(1);
-                  }}
-                  className="text-[10px] text-rose-400 hover:underline ml-1"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
               <ArrowUpDown className="w-3.5 h-3.5 text-[#D4AF37]" />
               <span className="text-slate-400">Urutkan:</span>
               <select
@@ -488,6 +498,83 @@ export default function SuperAdminMembersPage() {
                 <option value="POINTS_DESC" className="bg-[#0F172A]">Saldo Poin Tertinggi</option>
               </select>
             </div>
+          </div>
+
+          {/* Rentang Waktu Filter Bar (Hari Ini, Kemarin, 7 Hari Terakhir, Bulan Ini, Semua Waktu, Pilih Tanggal) */}
+          <div className="pt-2 border-t border-[#1E293B]/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-semibold text-slate-400 mr-1 flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+                Rentang Waktu:
+              </span>
+              {(
+                [
+                  { id: 'TODAY', label: 'Hari Ini' },
+                  { id: 'YESTERDAY', label: 'Kemarin' },
+                  { id: 'LAST_7', label: '7 Hari Terakhir' },
+                  { id: 'THIS_MONTH', label: 'Bulan Ini' },
+                  { id: 'ALL', label: 'Semua Waktu' },
+                  { id: 'CUSTOM', label: 'Pilih Tanggal' },
+                ] as { id: DatePreset; label: string }[]
+              ).map((preset) => {
+                const isActive = datePreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => {
+                      setDatePreset(preset.id);
+                      setCurrentPage(1);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
+                        : 'bg-[#0F172A] text-slate-400 hover:text-slate-200 border border-[#1E293B]'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {datePreset === 'CUSTOM' && (
+              <div className="flex items-center gap-2 bg-[#0F172A] p-1.5 rounded-xl border border-[#1E293B]">
+                <span className="text-[10px] text-slate-400">Dari:</span>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => {
+                    setCustomStartDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-[#090D16] border border-slate-700 rounded px-2 py-0.5 text-xs text-white [color-scheme:dark]"
+                />
+                <span className="text-[10px] text-slate-400">s/d:</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => {
+                    setCustomEndDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="bg-[#090D16] border border-slate-700 rounded px-2 py-0.5 text-xs text-white [color-scheme:dark]"
+                />
+                {(customStartDate || customEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                      setCurrentPage(1);
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-red-400 px-1"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Table Members */}
