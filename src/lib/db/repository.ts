@@ -2669,7 +2669,7 @@ export const repository = {
           const sale = globalState.sales.find((s) => s.id === p.sale_id);
           return sale && sale.store_id === storeId && sale.payment_status !== 'CANCELLED';
         })
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
+        .reduce((sum, p) => sum + Math.max(0, (p.amount || 0) - (p.change_amount || 0)), 0);
 
       const totalDeposited = (globalState.cashDeposits || [])
         .filter((d) => d.store_id === storeId && d.status === 'APPROVED')
@@ -4575,12 +4575,16 @@ export const repository = {
         const payments = globalState.payments.filter((p) => p.sale_id === sale.id);
         if (payments.length > 0) {
           for (const p of payments) {
+            const netPaid =
+              p.amount !== undefined && p.amount !== null
+                ? Math.max(0, p.amount - (p.change_amount || 0))
+                : sale.final_amount;
             if (p.payment_method === 'CASH') {
               cashCount++;
-              cashAmount += p.amount || sale.final_amount;
+              cashAmount += netPaid;
             } else if (p.payment_method === 'QRIS') {
               qrisCount++;
-              qrisAmount += p.amount || sale.final_amount;
+              qrisAmount += netPaid;
             }
           }
         } else {
