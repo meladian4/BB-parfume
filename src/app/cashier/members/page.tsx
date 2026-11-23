@@ -9,19 +9,23 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateTimeJakarta } from '@/lib/formatters';
 import { Member, PointTransaction, UserProfile } from '@/types/domain';
-import { Users, Search, Plus, Phone, Mail, Award, History, CheckCircle2 } from 'lucide-react';
+import { Users, Search, Plus, Phone, Mail, Award, History, CheckCircle2, UserCheck, CreditCard } from 'lucide-react';
 
 export default function CashierMembersPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [employees, setEmployees] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('ALL');
 
   // State Modal Tambah Member
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addMemberCode, setAddMemberCode] = useState('');
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
   const [addEmail, setAddEmail] = useState('');
+  const [addRegisteredBy, setAddRegisteredBy] = useState('');
   const [submittingAdd, setSubmittingAdd] = useState(false);
 
   // State Modal Riwayat Poin
@@ -33,13 +37,16 @@ export default function CashierMembersPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [uRes, mRes] = await Promise.all([
-        fetch('/api/users/me').then((r) => r.json()),
-        fetch('/api/members').then((r) => r.json()),
+      const [uRes, mRes, empRes] = await Promise.all([
+        fetch('/api/users/me').then((r) => r.json()).catch(() => ({})),
+        fetch('/api/members').then((r) => r.json()).catch(() => ({})),
+        fetch('/api/users').then((r) => r.json()).catch(() => ({})),
       ]);
 
       setUser(uRes.user);
       setMembers(mRes.members || []);
+      const empList: UserProfile[] = empRes.users || empRes.data || [];
+      setEmployees(Array.isArray(empList) ? empList.filter((e) => e.is_active !== false) : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -74,18 +81,22 @@ export default function CashierMembersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          member_code: addMemberCode.trim() || null,
           name: addName,
           phone: addPhone,
           email: addEmail || null,
+          registered_by: addRegisteredBy.trim() || null,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
       setIsAddModalOpen(false);
+      setAddMemberCode('');
       setAddName('');
       setAddPhone('');
       setAddEmail('');
+      setAddRegisteredBy('');
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Gagal mendaftarkan member.');
@@ -94,12 +105,28 @@ export default function CashierMembersPage() {
     }
   };
 
+  const employeeOptions = Array.from(
+    new Set([
+      ...employees.map((e) => e.full_name).filter(Boolean),
+      ...members.map((m) => m.registered_by || '').filter(Boolean),
+    ])
+  );
+
   const filteredMembers = members.filter((m) => {
+    if (employeeFilter !== 'ALL') {
+      if (employeeFilter === 'UNASSIGNED') {
+        if (m.registered_by) return false;
+      } else if ((m.registered_by || '') !== employeeFilter) {
+        return false;
+      }
+    }
     const q = search.toLowerCase();
     return (
       m.name.toLowerCase().includes(q) ||
       m.phone.toLowerCase().includes(q) ||
-      (m.email && m.email.toLowerCase().includes(q))
+      (m.email && m.email.toLowerCase().includes(q)) ||
+      (m.member_code && m.member_code.toLowerCase().includes(q)) ||
+      (m.registered_by && m.registered_by.toLowerCase().includes(q))
     );
   });
 
@@ -132,16 +159,36 @@ export default function CashierMembersPage() {
             </Button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Cari nama pelanggan atau nomor WhatsApp..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
-            />
+          {/* Search & Employee Filter Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative max-w-md flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari ID member, nama pelanggan, WhatsApp, atau petugas..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
+              <UserCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-slate-400">Petugas Pendaftar:</span>
+              <select
+                value={employeeFilter}
+                onChange={(e) => setEmployeeFilter(e.target.value)}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="ALL" className="bg-[#0F172A]">Semua Karyawan</option>
+                {employeeOptions.map((empName) => (
+                  <option key={empName} value={empName} className="bg-[#0F172A]">
+                    {empName}
+                  </option>
+                ))}
+                <option value="UNASSIGNED" className="bg-[#0F172A]">Tanpa Petugas</option>
+              </select>
+            </div>
           </div>
 
           {/* Table Members */}
@@ -150,8 +197,9 @@ export default function CashierMembersPage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#0F172A] text-slate-400 border-b border-[#1E293B] uppercase text-[10px] tracking-wider">
                   <tr>
-                    <th className="py-3 px-4">Nama Pelanggan</th>
+                    <th className="py-3 px-4">ID &amp; Nama Pelanggan</th>
                     <th className="py-3 px-4">Kontak WhatsApp</th>
+                    <th className="py-3 px-4">Petugas Pendaftar</th>
                     <th className="py-3 px-4">Tier Loyalitas</th>
                     <th className="py-3 px-4 text-right">Saldo Poin</th>
                     <th className="py-3 px-4 text-center">Riwayat Poin</th>
@@ -161,13 +209,30 @@ export default function CashierMembersPage() {
                   {filteredMembers.map((m) => (
                     <tr key={m.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-4">
-                        <p className="font-semibold text-white">{m.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-white">{m.name}</p>
+                          {m.member_code && (
+                            <span className="px-1.5 py-0.5 rounded bg-[#D4AF37]/15 text-[#E5C365] border border-[#D4AF37]/30 font-mono text-[10px] font-bold">
+                              {m.member_code}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-slate-300">
                         <div className="flex items-center gap-1.5">
                           <Phone className="w-3 h-3 text-[#D4AF37]" />
                           <span>{m.phone}</span>
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {m.registered_by ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950/50 text-emerald-300 border border-emerald-800/50 text-[11px] font-medium">
+                            <UserCheck className="w-3 h-3 text-emerald-400" />
+                            {m.registered_by}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-500">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         <span
@@ -201,7 +266,7 @@ export default function CashierMembersPage() {
                   ))}
                   {filteredMembers.length === 0 && !loading && (
                     <tr>
-                      <td colSpan={5} className="text-center py-12 text-slate-500">
+                      <td colSpan={6} className="text-center py-12 text-slate-500">
                         Tidak ada member yang cocok dengan pencarian.
                       </td>
                     </tr>
@@ -275,6 +340,18 @@ export default function CashierMembersPage() {
       >
         <form onSubmit={handleAddMember} className="space-y-4 text-xs">
           <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              ID Member / Kode Kartu (Opsional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Contoh: BB-001 (Kosongkan jika otomatis)"
+              value={addMemberCode}
+              onChange={(e) => setAddMemberCode(e.target.value)}
+            />
+          </div>
+
+          <div>
             <label className="text-xs font-medium text-slate-300 block mb-1">Nama Lengkap Pelanggan</label>
             <Input
               type="text"
@@ -304,6 +381,27 @@ export default function CashierMembersPage() {
               value={addEmail}
               onChange={(e) => setAddEmail(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              Karyawan / Petugas Pendaftar (Opsional — Monitoring Kinerja)
+            </label>
+            <select
+              value={addRegisteredBy}
+              onChange={(e) => setAddRegisteredBy(e.target.value)}
+              className="w-full px-3 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+            >
+              <option value="">-- Pilih Karyawan / Petugas (Opsional) --</option>
+              {employeeOptions.map((empName) => (
+                <option key={empName} value={empName}>
+                  {empName}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Digunakan untuk memantau kontribusi pendaftaran member oleh masing-masing karyawan.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">

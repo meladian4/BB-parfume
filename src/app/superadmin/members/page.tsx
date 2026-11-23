@@ -23,19 +23,24 @@ import {
   Award,
   Edit,
   Trash2,
+  UserCheck,
 } from 'lucide-react';
 
 export default function SuperAdminMembersPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [employees, setEmployees] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('ALL');
 
   // State Modal Tambah Member
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addMemberCode, setAddMemberCode] = useState('');
   const [addName, setAddName] = useState('');
   const [addPhone, setAddPhone] = useState('');
   const [addEmail, setAddEmail] = useState('');
+  const [addRegisteredBy, setAddRegisteredBy] = useState('');
   const [addTier, setAddTier] = useState('SILVER');
   const [submittingAdd, setSubmittingAdd] = useState(false);
 
@@ -54,9 +59,11 @@ export default function SuperAdminMembersPage() {
   // State Modal Edit Member
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedMemberToEdit, setSelectedMemberToEdit] = useState<Member | null>(null);
+  const [editMemberCode, setEditMemberCode] = useState('');
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editRegisteredBy, setEditRegisteredBy] = useState('');
   const [editTier, setEditTier] = useState('SILVER');
   const [submittingEdit, setSubmittingEdit] = useState(false);
 
@@ -75,14 +82,17 @@ export default function SuperAdminMembersPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [uRes, mRes] = await Promise.all([
-        fetch('/api/users/me').then((r) => r.json()),
-        fetch('/api/members').then((r) => r.json()),
+      const [uRes, mRes, empRes] = await Promise.all([
+        fetch('/api/users/me').then((r) => r.json()).catch(() => ({})),
+        fetch('/api/members').then((r) => r.json()).catch(() => ({})),
+        fetch('/api/users').then((r) => r.json()).catch(() => ({})),
       ]);
 
       setUser(uRes.user);
       const memberList: Member[] = mRes.members || [];
       setMembers(memberList);
+      const empList: UserProfile[] = empRes.users || empRes.data || [];
+      setEmployees(Array.isArray(empList) ? empList.filter((e) => e.is_active !== false) : []);
 
       // Verifikasi rekonsiliasi buku besar poin untuk tiap member
       const reconMap: Record<string, boolean> = {};
@@ -163,9 +173,11 @@ export default function SuperAdminMembersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          member_code: addMemberCode.trim() || null,
           name: addName,
           phone: addPhone,
           email: addEmail || null,
+          registered_by: addRegisteredBy.trim() || null,
           tier: addTier,
         }),
       });
@@ -173,9 +185,11 @@ export default function SuperAdminMembersPage() {
       if (!res.ok) throw new Error(data.error);
 
       setIsAddModalOpen(false);
+      setAddMemberCode('');
       setAddName('');
       setAddPhone('');
       setAddEmail('');
+      setAddRegisteredBy('');
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Gagal menambahkan member.');
@@ -186,9 +200,11 @@ export default function SuperAdminMembersPage() {
 
   const handleOpenEdit = (m: Member) => {
     setSelectedMemberToEdit(m);
+    setEditMemberCode(m.member_code || '');
     setEditName(m.name);
     setEditPhone(m.phone);
     setEditEmail(m.email || '');
+    setEditRegisteredBy(m.registered_by || '');
     setEditTier(m.tier);
     setIsEditModalOpen(true);
   };
@@ -202,9 +218,11 @@ export default function SuperAdminMembersPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          member_code: editMemberCode.trim() || null,
           name: editName,
           phone: editPhone,
           email: editEmail || null,
+          registered_by: editRegisteredBy.trim() || null,
           tier: editTier,
         }),
       });
@@ -244,12 +262,33 @@ export default function SuperAdminMembersPage() {
     }
   };
 
+  const employeeOptions = Array.from(
+    new Set([
+      ...employees.map((e) => e.full_name).filter(Boolean),
+      ...members.map((m) => m.registered_by || '').filter(Boolean),
+    ])
+  );
+
+  const employeeEffortSummary = employeeOptions.map((empName) => {
+    const count = members.filter((m) => (m.registered_by || '') === empName).length;
+    return { name: empName, count };
+  });
+
   const filteredMembers = members.filter((m) => {
+    if (employeeFilter !== 'ALL') {
+      if (employeeFilter === 'UNASSIGNED') {
+        if (m.registered_by) return false;
+      } else if ((m.registered_by || '') !== employeeFilter) {
+        return false;
+      }
+    }
     const q = search.toLowerCase();
     return (
       m.name.toLowerCase().includes(q) ||
       m.phone.toLowerCase().includes(q) ||
-      (m.email && m.email.toLowerCase().includes(q))
+      (m.email && m.email.toLowerCase().includes(q)) ||
+      (m.member_code && m.member_code.toLowerCase().includes(q)) ||
+      (m.registered_by && m.registered_by.toLowerCase().includes(q))
     );
   });
 
@@ -281,19 +320,96 @@ export default function SuperAdminMembersPage() {
             </Button>
           </div>
 
-          {/* Search Bar */}
-          <div className="relative max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Cari nama pelanggan, nomor WhatsApp, email..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full pl-10 pr-4 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
-            />
+          {/* Card Monitoring Kinerja Pendaftaran Member per Karyawan (Stakeholder Output) */}
+          {employeeEffortSummary.length > 0 && (
+            <div className="bg-[#0F172A] border border-[#1E293B] rounded-2xl p-3">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  Monitoring Kinerja Pendaftaran Member per Karyawan
+                </p>
+                {employeeFilter !== 'ALL' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmployeeFilter('ALL');
+                      setCurrentPage(1);
+                    }}
+                    className="text-[10px] text-[#D4AF37] hover:underline font-medium"
+                  >
+                    Tampilkan Semua Karyawan
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {employeeEffortSummary.map((emp, idx) => {
+                  const isSelected = employeeFilter === emp.name;
+                  return (
+                    <button
+                      key={emp.name}
+                      type="button"
+                      onClick={() => {
+                        setEmployeeFilter(isSelected ? 'ALL' : emp.name);
+                        setCurrentPage(1);
+                      }}
+                      className={`text-left rounded-xl p-2 transition-all cursor-pointer ${
+                        idx > 0 ? 'sm:border-l sm:border-slate-800 sm:rounded-l-none sm:pl-3' : ''
+                      } ${
+                        isSelected
+                          ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/60'
+                          : 'hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <p className="text-[10px] text-slate-400 flex items-center gap-1.5 truncate">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                        <span className="truncate">{emp.name}</span>
+                      </p>
+                      <p className="text-sm font-bold text-emerald-400 mt-0.5">
+                        {emp.count} <span className="text-xs font-medium text-slate-400">member</span>
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Search & Employee Filter Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative max-w-md flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari ID member, nama pelanggan, WhatsApp, email, atau petugas..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-10 pr-4 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
+              <UserCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-slate-400">Filter Karyawan:</span>
+              <select
+                value={employeeFilter}
+                onChange={(e) => {
+                  setEmployeeFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="ALL" className="bg-[#0F172A]">Semua Karyawan ({members.length})</option>
+                {employeeEffortSummary.map((emp) => (
+                  <option key={emp.name} value={emp.name} className="bg-[#0F172A]">
+                    {emp.name} ({emp.count} member)
+                  </option>
+                ))}
+                <option value="UNASSIGNED" className="bg-[#0F172A]">Tanpa Petugas</option>
+              </select>
+            </div>
           </div>
 
           {/* Table Members */}
@@ -302,8 +418,9 @@ export default function SuperAdminMembersPage() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#0F172A] text-slate-400 border-b border-[#1E293B] uppercase text-[10px] tracking-wider">
                   <tr>
-                    <th className="py-3 px-4">Nama Pelanggan</th>
+                    <th className="py-3 px-4">ID &amp; Nama Pelanggan</th>
                     <th className="py-3 px-4">Kontak (WA/Email)</th>
+                    <th className="py-3 px-4">Petugas Pendaftar</th>
                     <th className="py-3 px-4">Tier Keanggotaan</th>
                     <th className="py-3 px-4 text-right">Saldo Poin</th>
                     <th className="py-3 px-4 text-center">Integritas Ledger</th>
@@ -316,8 +433,17 @@ export default function SuperAdminMembersPage() {
                     return (
                       <tr key={m.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="py-3 px-4">
-                          <p className="font-semibold text-white">{m.name}</p>
-                          <p className="text-[10px] text-slate-500 font-mono">ID: {m.id.slice(0, 18)}...</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-white">{m.name}</p>
+                            {m.member_code && (
+                              <span className="px-1.5 py-0.5 rounded bg-[#D4AF37]/15 text-[#E5C365] border border-[#D4AF37]/30 font-mono text-[10px] font-bold">
+                                {m.member_code}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {m.member_code ? `Kode: ${m.member_code}` : `ID: ${m.id.slice(0, 18)}...`}
+                          </p>
                         </td>
                         <td className="py-3 px-4 text-slate-300">
                           <div className="flex items-center gap-1.5">
@@ -329,6 +455,16 @@ export default function SuperAdminMembersPage() {
                               <Mail className="w-3 h-3 text-slate-500" />
                               <span>{m.email}</span>
                             </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4">
+                          {m.registered_by ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950/50 text-emerald-300 border border-emerald-800/50 text-[11px] font-medium">
+                              <UserCheck className="w-3 h-3 text-emerald-400" />
+                              {m.registered_by}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-slate-500">-</span>
                           )}
                         </td>
                         <td className="py-3 px-4">
@@ -596,6 +732,18 @@ export default function SuperAdminMembersPage() {
       >
         <form onSubmit={handleAddMember} className="space-y-4 text-xs">
           <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              ID Member / Kode Kartu (Opsional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Contoh: BB-001 (Kosongkan jika otomatis)"
+              value={addMemberCode}
+              onChange={(e) => setAddMemberCode(e.target.value)}
+            />
+          </div>
+
+          <div>
             <label className="text-xs font-medium text-slate-300 block mb-1">Nama Lengkap Pelanggan</label>
             <Input
               type="text"
@@ -625,6 +773,24 @@ export default function SuperAdminMembersPage() {
               value={addEmail}
               onChange={(e) => setAddEmail(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              Karyawan / Petugas Pendaftar (Opsional — Monitoring Kinerja)
+            </label>
+            <select
+              value={addRegisteredBy}
+              onChange={(e) => setAddRegisteredBy(e.target.value)}
+              className="w-full px-3 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+            >
+              <option value="">-- Pilih Karyawan / Petugas (Opsional) --</option>
+              {employeeOptions.map((empName) => (
+                <option key={empName} value={empName}>
+                  {empName}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -659,6 +825,18 @@ export default function SuperAdminMembersPage() {
       >
         <form onSubmit={handleEditMember} className="space-y-4 text-xs">
           <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              ID Member / Kode Kartu (Opsional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Contoh: BB-001"
+              value={editMemberCode}
+              onChange={(e) => setEditMemberCode(e.target.value)}
+            />
+          </div>
+
+          <div>
             <label className="text-xs font-medium text-slate-300 block mb-1">Nama Lengkap Pelanggan</label>
             <Input
               type="text"
@@ -685,6 +863,24 @@ export default function SuperAdminMembersPage() {
               value={editEmail}
               onChange={(e) => setEditEmail(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-slate-300 block mb-1">
+              Karyawan / Petugas Pendaftar (Opsional — Monitoring Kinerja)
+            </label>
+            <select
+              value={editRegisteredBy}
+              onChange={(e) => setEditRegisteredBy(e.target.value)}
+              className="w-full px-3 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+            >
+              <option value="">-- Tanpa Petugas --</option>
+              {employeeOptions.map((empName) => (
+                <option key={empName} value={empName}>
+                  {empName}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

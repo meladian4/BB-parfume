@@ -28,7 +28,7 @@ export async function PUT(
   try {
     await authenticateAndRequireRole(['SUPER_ADMIN']);
     const body = await request.json();
-    const { name, phone, email, tier, is_active } = body;
+    const { name, phone, email, tier, is_active, member_code, registered_by } = body;
 
     const updated = await db.updateMember(params.id, {
       name,
@@ -36,6 +36,8 @@ export async function PUT(
       email,
       tier,
       is_active,
+      member_code,
+      registered_by,
     });
 
     return NextResponse.json({ success: true, member: updated });

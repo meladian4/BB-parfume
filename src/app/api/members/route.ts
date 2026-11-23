@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     await authenticateAndRequireRole(['CASHIER', 'SUPER_ADMIN']);
     const body = await request.json();
-    const { name, phone, email, tier } = body;
+    const { name, phone, email, tier, member_code, registered_by } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: 'Nama member wajib diisi.' }, { status: 400 });
@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
       phone,
       email,
       tier: tier || 'SILVER',
+      member_code: member_code || null,
+      registered_by: registered_by || null,
     });
 
     return NextResponse.json({ success: true, member }, { status: 201 });

@@ -309,9 +309,11 @@ export interface PosLockStatus {
 
 export interface Member {
   id: string;
+  member_code?: string | null;
   name: string;
   phone: string;
   email?: string | null;
+  registered_by?: string | null;
   points_balance: number;
   tier: string;
   is_active: boolean;

@@ -2856,7 +2856,9 @@ export const repository = {
         (m) =>
           m.name.toLowerCase().includes(q) ||
           m.phone.toLowerCase().includes(q) ||
-          (m.email && m.email.toLowerCase().includes(q))
+          (m.email && m.email.toLowerCase().includes(q)) ||
+          (m.member_code && m.member_code.toLowerCase().includes(q)) ||
+          (m.registered_by && m.registered_by.toLowerCase().includes(q))
       );
     }
     return list;
@@ -2878,6 +2880,8 @@ export const repository = {
     phone: string;
     email?: string | null;
     tier?: string;
+    member_code?: string | null;
+    registered_by?: string | null;
   }): Promise<Member> {
     const cleanPhone = data.phone.trim();
     const existing = await this.getMemberByPhone(cleanPhone);
@@ -2885,11 +2889,23 @@ export const repository = {
       throw new Error(`Member dengan nomor HP '${cleanPhone}' sudah terdaftar (${existing.name}).`);
     }
 
+    const cleanCode = data.member_code?.trim() || null;
+    if (cleanCode) {
+      const existingCode = globalState.members.find(
+        (m) => m.member_code && m.member_code.toLowerCase() === cleanCode.toLowerCase()
+      );
+      if (existingCode) {
+        throw new Error(`ID Member '${cleanCode}' sudah digunakan oleh member lain (${existingCode.name}).`);
+      }
+    }
+
     const newMember: Member = {
       id: `m0000000-${Date.now().toString(16).slice(-4)}-4000-8000-${Math.random().toString(16).slice(2, 14)}`,
+      member_code: cleanCode,
       name: data.name.trim(),
       phone: cleanPhone,
       email: data.email?.trim() || null,
+      registered_by: data.registered_by?.trim() || null,
       points_balance: 0,
       tier: data.tier || 'SILVER',
       is_active: true,
@@ -2903,7 +2919,12 @@ export const repository = {
       action: 'MEMBER_CREATED',
       entity_name: 'members',
       entity_id: newMember.id,
-      new_data: { name: newMember.name, phone: newMember.phone },
+      new_data: {
+        name: newMember.name,
+        phone: newMember.phone,
+        member_code: newMember.member_code,
+        registered_by: newMember.registered_by,
+      },
     });
 
     globalState.saveToFile();
@@ -2919,6 +2940,8 @@ export const repository = {
       email?: string | null;
       tier?: string;
       is_active?: boolean;
+      member_code?: string | null;
+      registered_by?: string | null;
     }
   ): Promise<Member> {
     const member = globalState.members.find((m) => m.id === id);
@@ -2935,8 +2958,22 @@ export const repository = {
       member.phone = cleanPhone;
     }
 
+    if (data.member_code !== undefined) {
+      const cleanCode = data.member_code?.trim() || null;
+      if (cleanCode) {
+        const existingCode = globalState.members.find(
+          (m) => m.id !== id && m.member_code && m.member_code.toLowerCase() === cleanCode.toLowerCase()
+        );
+        if (existingCode) {
+          throw new Error(`ID Member '${cleanCode}' sudah digunakan oleh member lain (${existingCode.name}).`);
+        }
+      }
+      member.member_code = cleanCode;
+    }
+
     if (data.name !== undefined) member.name = data.name.trim();
     if (data.email !== undefined) member.email = data.email?.trim() || null;
+    if (data.registered_by !== undefined) member.registered_by = data.registered_by?.trim() || null;
     if (data.tier !== undefined) member.tier = data.tier;
     if (data.is_active !== undefined) member.is_active = data.is_active;
     member.updated_at = new Date().toISOString();
@@ -2945,7 +2982,13 @@ export const repository = {
       action: 'MEMBER_UPDATED',
       entity_name: 'members',
       entity_id: member.id,
-      new_data: { name: member.name, phone: member.phone, tier: member.tier },
+      new_data: {
+        name: member.name,
+        phone: member.phone,
+        tier: member.tier,
+        member_code: member.member_code,
+        registered_by: member.registered_by,
+      },
     });
 
     globalState.saveToFile();
