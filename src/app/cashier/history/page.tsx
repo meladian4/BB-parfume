@@ -1344,7 +1344,11 @@ export default function CashierHistoryPage() {
                   <div className="flex justify-center mb-1">
                     <img src="/logo-black.png" alt="BB Parfum" className="w-9 h-9 object-contain" />
                   </div>
-                  <p className="font-bold text-sm tracking-wider">BB PARFUM PREMIUM</p>
+                  <p className="font-bold text-sm tracking-wider">
+                    {receiptSaleToPrint.store?.receipt_header ||
+                      user?.assigned_store?.receipt_header ||
+                      'BB PARFUM PREMIUM'}
+                  </p>
                   <p className="text-[10px] text-gray-700">
                     {receiptSaleToPrint.store?.name || user?.assigned_store?.name || 'Cabang Kendal'}
                   </p>
@@ -1430,8 +1434,11 @@ export default function CashierHistoryPage() {
                 {/* Footer Struk */}
                 <div className="text-center pt-3 text-[9px] text-gray-600 space-y-0.5">
                   <p className="font-bold">TERIMA KASIH ATAS KUNJUNGAN ANDA</p>
-                  <p>Barang yang sudah dibeli tidak dapat ditukar</p>
-                  <p>kecuali ada perjanjian retur resmi.</p>
+                  <p>
+                    {receiptSaleToPrint.store?.receipt_footer ||
+                      user?.assigned_store?.receipt_footer ||
+                      'Barang yang sudah dibeli tidak dapat ditukar kecuali ada perjanjian retur resmi.'}
+                  </p>
                   <p className="pt-1 text-[8px] text-gray-400">BB Parfum Management System</p>
                 </div>
               </div>

@@ -14,6 +14,8 @@ export interface Store {
   type: StoreType;
   address: string;
   phone?: string;
+  receipt_header?: string | null;
+  receipt_footer?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

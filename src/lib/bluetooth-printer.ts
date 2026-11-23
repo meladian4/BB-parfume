@@ -265,8 +265,13 @@ export function buildReceiptEscPosData(
   addBytes(...CMD_ALIGN_CENTER);
   addText(makeDivider(maxChars, '-'));
   addText('TERIMA KASIH ATAS KUNJUNGAN ANDA');
-  addText('Barang yang dibeli tidak dapat ditukar');
-  addText('kecuali ada perjanjian retur.');
+  const customFooter = sale?.store?.receipt_footer;
+  if (customFooter) {
+    addText(customFooter);
+  } else {
+    addText('Barang yang dibeli tidak dapat ditukar');
+    addText('kecuali ada perjanjian retur.');
+  }
   addText('BB Parfum POS System');
 
   // Feed 3 baris dan potong kertas

@@ -695,6 +695,7 @@ class MemoryDatabaseState {
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf-8');
         const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.stores) && parsed.stores.length > 0) this.stores = parsed.stores;
         if (Array.isArray(parsed.products) && parsed.products.length > 0) this.products = parsed.products;
         if (Array.isArray(parsed.categories) && parsed.categories.length > 0) this.categories = parsed.categories;
         if (Array.isArray(parsed.inventoryBalances) && parsed.inventoryBalances.length > 0) this.inventoryBalances = parsed.inventoryBalances;
@@ -825,6 +826,7 @@ export const repository = {
       updated_at: new Date().toISOString(),
     };
     globalState.stores.push(newStore);
+    globalState.saveToFile();
     return newStore;
   },
 
@@ -833,12 +835,39 @@ export const repository = {
     if (index === -1) {
       throw new Error(`Toko dengan ID '${id}' tidak ditemukan.`);
     }
-    const updated = {
+    if (data.code && data.code.trim().toUpperCase() !== globalState.stores[index].code.toUpperCase()) {
+      const cleanCode = data.code.trim().toUpperCase();
+      const dup = globalState.stores.find((s) => s.id !== id && s.code.toUpperCase() === cleanCode);
+      if (dup) {
+        throw new Error(`Kode lokasi '${cleanCode}' sudah digunakan oleh '${dup.name}'.`);
+      }
+      data.code = cleanCode;
+    }
+    const cleanPatch = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined)
+    );
+    const updated: Store = {
       ...globalState.stores[index],
-      ...data,
+      ...cleanPatch,
       updated_at: new Date().toISOString(),
     };
     globalState.stores[index] = updated;
+    globalState.saveToFile();
+
+    await this.createAuditLog({
+      action: 'STORE_UPDATED',
+      entity_name: 'stores',
+      entity_id: id,
+      new_data: {
+        code: updated.code,
+        name: updated.name,
+        type: updated.type,
+        address: updated.address,
+        phone: updated.phone,
+        is_active: updated.is_active,
+      },
+    });
+
     return updated;
   },
 
