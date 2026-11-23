@@ -18,11 +18,12 @@ export async function POST(request: NextRequest) {
   try {
     const authUser = await authenticateAndRequireRole(['SUPER_ADMIN']);
     const body = await request.json();
-    const { spend_per_point, point_value_idr, min_redeem_points, is_active } = body;
+    const { spend_per_point, points_per_step, point_value_idr, min_redeem_points, is_active } = body;
 
     const updated = await db.updateLoyaltyConfig(
       {
         spend_per_point: spend_per_point !== undefined ? Number(spend_per_point) : undefined,
+        points_per_step: points_per_step !== undefined ? Number(points_per_step) : undefined,
         point_value_idr: point_value_idr !== undefined ? Number(point_value_idr) : undefined,
         min_redeem_points: min_redeem_points !== undefined ? Number(min_redeem_points) : undefined,
         is_active: is_active !== undefined ? Boolean(is_active) : undefined,

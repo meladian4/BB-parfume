@@ -203,6 +203,8 @@ export type StockTransferStatus =
   | 'PENDING_SHIPMENT'
   | 'IN_TRANSIT'
   | 'RECEIVED'
+  | 'RETURN_REQUESTED'
+  | 'RETURNED'
   | 'REJECTED'
   | 'CANCELLED';
 
@@ -232,6 +234,12 @@ export interface StockTransfer {
   rejected_by?: string | null;
   rejected_at?: string | null;
   rejection_reason?: string | null;
+  return_requested_by?: string | null;
+  return_requested_at?: string | null;
+  return_reason?: string | null;
+  return_approved_by?: string | null;
+  return_approved_at?: string | null;
+  return_admin_notes?: string | null;
   created_at: string;
   source_store?: Store;
   destination_store?: Store;
@@ -394,9 +402,10 @@ export interface PointTransaction {
 }
 
 export interface LoyaltyConfig {
-  spend_per_point: number; // Nilai belanja per 1 poin (default: 30000 -> Rp 30.000 belanja per 1 poin)
-  point_value_idr: number; // Nilai tukar 1 poin ke rupiah (default: 1500 -> 1 poin bernilai Rp 1.500)
-  min_redeem_points: number; // Minimal poin untuk dapat ditukarkan (default: 1)
+  spend_per_point: number; // Nominal belanja per 1x kelipatan (default: 30000 -> setiap kelipatan Rp 30.000)
+  points_per_step?: number; // Jumlah poin yang didapat per 1x kelipatan belanja (default: 1500 -> 1.500 poin)
+  point_value_idr: number; // Nilai tukar 1 poin ke rupiah (default: 1 -> 1 poin bernilai Rp 1, 1.500 poin = Rp 1.500)
+  min_redeem_points: number; // Minimal poin untuk dapat ditukarkan (default: 1500)
   is_active: boolean;
 }
 

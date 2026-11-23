@@ -31,6 +31,7 @@ import {
   Clock,
   Filter,
   Bluetooth,
+  Sparkles,
 } from 'lucide-react';
 import { printReceiptViaBluetooth } from '@/lib/bluetooth-printer';
 
@@ -58,6 +59,8 @@ export default function CashierHistoryPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [sortOrder, setSortOrder] = useState<'DESC' | 'ASC'>('DESC');
+  const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'QTY_DESC' | 'QTY_ASC' | 'AMOUNT_DESC' | 'AMOUNT_ASC'>('DATE_DESC');
+  const [tierFilter, setTierFilter] = useState<string>('ALL');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<'ALL' | PaymentMethod>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | SaleStatus>('ALL');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('ALL');
@@ -164,7 +167,9 @@ export default function CashierHistoryPage() {
           s.invoice_number.toLowerCase().includes(q) ||
           (s.member?.name && s.member.name.toLowerCase().includes(q)) ||
           (s.cashier?.full_name && s.cashier.full_name.toLowerCase().includes(q)) ||
-          (s.store?.name && s.store.name.toLowerCase().includes(q));
+          (s.store?.name && s.store.name.toLowerCase().includes(q)) ||
+          (s.perfume_tier && s.perfume_tier.toLowerCase().includes(q)) ||
+          (s.items && s.items.some((it) => it.product?.name?.toLowerCase().includes(q)));
 
         if (!matchSearch) return false;
 
@@ -184,7 +189,15 @@ export default function CashierHistoryPage() {
           return false;
         }
 
-        // 5. Date Filter
+        // 5. Tier / Jenis Item Filter
+        if (tierFilter !== 'ALL') {
+          const saleTier = (s.perfume_tier || 'Standard').toLowerCase();
+          if (saleTier !== tierFilter.toLowerCase()) {
+            return false;
+          }
+        }
+
+        // 6. Date Filter
         const dateStr = s.created_at.slice(0, 10);
         if (datePreset === 'TODAY') {
           if (dateStr !== getTodayStr()) return false;
@@ -202,9 +215,25 @@ export default function CashierHistoryPage() {
         return true;
       })
       .sort((a, b) => {
+        if (sortBy === 'QTY_DESC') {
+          const qtyA = a.items?.reduce((sum, it) => sum + (it.quantity || 0), 0) || 0;
+          const qtyB = b.items?.reduce((sum, it) => sum + (it.quantity || 0), 0) || 0;
+          return qtyB - qtyA;
+        }
+        if (sortBy === 'QTY_ASC') {
+          const qtyA = a.items?.reduce((sum, it) => sum + (it.quantity || 0), 0) || 0;
+          const qtyB = b.items?.reduce((sum, it) => sum + (it.quantity || 0), 0) || 0;
+          return qtyA - qtyB;
+        }
+        if (sortBy === 'AMOUNT_DESC') {
+          return b.final_amount - a.final_amount;
+        }
+        if (sortBy === 'AMOUNT_ASC') {
+          return a.final_amount - b.final_amount;
+        }
         const timeA = new Date(a.created_at).getTime();
         const timeB = new Date(b.created_at).getTime();
-        return sortOrder === 'DESC' ? timeB - timeA : timeA - timeB;
+        return sortBy === 'DATE_ASC' ? timeA - timeB : timeB - timeA;
       });
   }, [
     sales,
@@ -212,10 +241,11 @@ export default function CashierHistoryPage() {
     selectedStoreId,
     paymentMethodFilter,
     statusFilter,
+    tierFilter,
+    sortBy,
     datePreset,
     customStartDate,
     customEndDate,
-    sortOrder,
   ]);
 
   // Aggregate stats from filtered list
@@ -464,16 +494,38 @@ export default function CashierHistoryPage() {
                   </div>
                 )}
 
-                {/* Sort Order Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setSortOrder(sortOrder === 'DESC' ? 'ASC' : 'DESC')}
-                  className="flex items-center gap-1.5 bg-[#0F172A] hover:bg-[#1E293B] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-slate-300 hover:text-white transition-colors"
-                  title="Klik untuk mengubah urutan waktu"
-                >
+                {/* Sort Order Selector */}
+                <div className="flex items-center gap-1.5 bg-[#0F172A] border border-[#1E293B] rounded-xl px-2.5 py-1.5">
                   <ArrowUpDown className="w-3.5 h-3.5 text-[#D4AF37]" />
-                  <span>{sortOrder === 'DESC' ? 'Terbaru → Terlama' : 'Terlama → Terbaru'}</span>
-                </button>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setSortBy(val);
+                      setSortOrder(val.includes('ASC') ? 'ASC' : 'DESC');
+                    }}
+                    className="bg-transparent text-xs text-slate-200 focus:outline-none cursor-pointer"
+                  >
+                    <option value="DATE_DESC" className="bg-[#0F172A] text-slate-200">
+                      Waktu: Terbaru → Terlama
+                    </option>
+                    <option value="DATE_ASC" className="bg-[#0F172A] text-slate-200">
+                      Waktu: Terlama → Terbaru
+                    </option>
+                    <option value="QTY_DESC" className="bg-[#0F172A] text-slate-200">
+                      Item (Qty): Terbanyak → Sedikit
+                    </option>
+                    <option value="QTY_ASC" className="bg-[#0F172A] text-slate-200">
+                      Item (Qty): Tersedikit → Banyak
+                    </option>
+                    <option value="AMOUNT_DESC" className="bg-[#0F172A] text-slate-200">
+                      Nominal: Tertinggi → Terendah
+                    </option>
+                    <option value="AMOUNT_ASC" className="bg-[#0F172A] text-slate-200">
+                      Nominal: Terendah → Tertinggi
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -613,6 +665,48 @@ export default function CashierHistoryPage() {
                   );
                 })}
               </div>
+
+              {/* Row 4: Item Quality / Tier Filter (Standard, Premium, Luxury, Primescent) */}
+              <div className="w-full pt-2 border-t border-[#1E293B]/60 flex items-center justify-between gap-3 text-xs flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] font-semibold text-slate-400 mr-1 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    Item / Kualitas:
+                  </span>
+                  {[
+                    { id: 'ALL', label: 'Semua Kualitas' },
+                    { id: 'Standard', label: 'Standard' },
+                    { id: 'Premium', label: 'Premium' },
+                    { id: 'Luxury', label: 'Luxury' },
+                    { id: 'Primescent', label: 'Primescent' },
+                  ].map((t) => {
+                    const isActive = tierFilter.toLowerCase() === t.id.toLowerCase();
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTierFilter(t.id)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                          isActive
+                            ? 'bg-[#D4AF37] text-slate-950 font-bold shadow-sm'
+                            : 'bg-[#0F172A] text-slate-400 hover:text-slate-200 border border-[#1E293B]'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {tierFilter !== 'ALL' && (
+                  <button
+                    type="button"
+                    onClick={() => setTierFilter('ALL')}
+                    className="text-[11px] text-[#D4AF37] hover:underline"
+                  >
+                    Reset Filter Kualitas
+                  </button>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -627,7 +721,18 @@ export default function CashierHistoryPage() {
                     <th className="py-3 px-4">Cabang</th>
                     <th className="py-3 px-4">Kasir</th>
                     <th className="py-3 px-4">Member</th>
-                    <th className="py-3 px-4">Item</th>
+                    <th
+                      className="py-3 px-4 cursor-pointer hover:text-[#D4AF37] select-none"
+                      onClick={() => {
+                        setSortBy(sortBy === 'QTY_DESC' ? 'QTY_ASC' : 'QTY_DESC');
+                      }}
+                      title="Klik untuk mengurutkan berdasarkan jumlah item"
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Item</span>
+                        <ArrowUpDown className="w-3 h-3 text-[#D4AF37]" />
+                      </div>
+                    </th>
                     <th className="py-3 px-4">Metode</th>
                     <th className="py-3 px-4 text-center">Status</th>
                     <th className="py-3 px-4 text-right">Total Akhir</th>
@@ -680,7 +785,12 @@ export default function CashierHistoryPage() {
                         <td className="py-3 px-4 text-slate-300">
                           <div className="font-mono">{itemCount} pcs</div>
                           <span
-                            className={`inline-block px-1.5 py-0.2 text-[9px] font-bold rounded uppercase mt-0.5 border ${
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTierFilter(s.perfume_tier || 'Standard');
+                            }}
+                            title={`Filter transaksi ${s.perfume_tier || 'Standard'}`}
+                            className={`inline-block px-1.5 py-0.2 text-[9px] font-bold rounded uppercase mt-0.5 border cursor-pointer hover:scale-105 transition-transform ${
                               s.perfume_tier === 'Primescent'
                                 ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800'
                                 : s.perfume_tier === 'Luxury'
@@ -1238,7 +1348,7 @@ export default function CashierHistoryPage() {
                   {receiptSaleToPrint.points_earned !== undefined && receiptSaleToPrint.points_earned > 0 && (
                     <div className="flex justify-between font-bold text-emerald-700 pt-1 border-t border-dashed border-gray-300">
                       <span>Reward Poin Didapat:</span>
-                      <span>+{receiptSaleToPrint.points_earned} Poin</span>
+                      <span>+{receiptSaleToPrint.points_earned.toLocaleString('id-ID')} Poin</span>
                     </div>
                   )}
                 </div>

@@ -454,8 +454,9 @@ class MemoryDatabaseState {
   // Loyalty Program & Ledger
   loyaltyConfig: LoyaltyConfig = {
     spend_per_point: 30000,
-    point_value_idr: 1500,
-    min_redeem_points: 1,
+    points_per_step: 1500,
+    point_value_idr: 1,
+    min_redeem_points: 1500,
     is_active: true,
   };
   pointTransactions: PointTransaction[] = [];
@@ -576,8 +577,9 @@ class MemoryDatabaseState {
     this.idempotencyKeys = new Set();
     this.loyaltyConfig = {
       spend_per_point: 30000,
-      point_value_idr: 1500,
-      min_redeem_points: 1,
+      points_per_step: 1500,
+      point_value_idr: 1,
+      min_redeem_points: 1500,
       is_active: true,
     };
     this.pointTransactions = [];
@@ -618,8 +620,9 @@ class MemoryDatabaseState {
     this.idempotencyKeys = new Set();
     this.loyaltyConfig = {
       spend_per_point: 30000,
-      point_value_idr: 1500,
-      min_redeem_points: 1,
+      points_per_step: 1500,
+      point_value_idr: 1,
+      min_redeem_points: 1500,
       is_active: true,
     };
     this.pointTransactions = [];
@@ -715,12 +718,27 @@ class MemoryDatabaseState {
           }));
         }
         if (parsed.loyaltyConfig && typeof parsed.loyaltyConfig === 'object') {
-          this.loyaltyConfig = {
-            spend_per_point: parsed.loyaltyConfig.spend_per_point || 30000,
-            point_value_idr: parsed.loyaltyConfig.point_value_idr || 1500,
-            min_redeem_points: parsed.loyaltyConfig.min_redeem_points || 1,
-            is_active: parsed.loyaltyConfig.is_active ?? true,
-          };
+          const isLegacyDefault =
+            parsed.loyaltyConfig.points_per_step === undefined &&
+            Number(parsed.loyaltyConfig.spend_per_point) === 30000 &&
+            Number(parsed.loyaltyConfig.point_value_idr) === 1500;
+          if (isLegacyDefault) {
+            this.loyaltyConfig = {
+              spend_per_point: 30000,
+              points_per_step: 1500,
+              point_value_idr: 1,
+              min_redeem_points: 1500,
+              is_active: parsed.loyaltyConfig.is_active ?? true,
+            };
+          } else {
+            this.loyaltyConfig = {
+              spend_per_point: parsed.loyaltyConfig.spend_per_point || 30000,
+              points_per_step: parsed.loyaltyConfig.points_per_step ?? 1500,
+              point_value_idr: parsed.loyaltyConfig.point_value_idr ?? 1,
+              min_redeem_points: parsed.loyaltyConfig.min_redeem_points ?? 1500,
+              is_active: parsed.loyaltyConfig.is_active ?? true,
+            };
+          }
         }
         if (parsed.passwords && typeof parsed.passwords === 'object') {
           for (const [k, v] of Object.entries(parsed.passwords)) {
@@ -2174,6 +2192,153 @@ export const repository = {
     return (await this.getStockTransferById(transferId))!;
   },
 
+  /**
+   * PENOLAKAN PENERIMAAN BARANG OLEH KASIR CABANG (IN_TRANSIT -> RETURN_REQUESTED)
+   * Ketika fisik barang tidak sesuai surat jalan, kasir menolak barang untuk dikembalikan ke Logistik Gudang.
+   * Stok cabang tidak bertambah; menunggu approval Super Admin agar stok dikembalikan ke Gudang Pusat.
+   */
+  async requestTransferReturn(
+    transferId: string,
+    reason: string,
+    requestedBy?: string | null
+  ): Promise<StockTransfer> {
+    const transfer = globalState.stockTransfers.find((t) => t.id === transferId);
+    if (!transfer) {
+      throw new Error(`Mutasi dengan ID '${transferId}' tidak ditemukan.`);
+    }
+
+    if (transfer.status !== 'IN_TRANSIT') {
+      throw new Error(`Hanya mutasi berstatus IN_TRANSIT yang dapat ditolak penerimaannya oleh kasir. Status saat ini: '${transfer.status}'`);
+    }
+
+    const cleanReason = reason?.trim();
+    if (!cleanReason) {
+      throw new Error('Alasan penolakan / ketidaksesuaian barang wajib diisi.');
+    }
+
+    const items = globalState.stockTransferItems.filter((it) => it.stock_transfer_id === transferId);
+    const now = new Date().toISOString();
+
+    transfer.status = 'RETURN_REQUESTED';
+    transfer.return_requested_at = now;
+    transfer.return_requested_by = requestedBy?.trim() || 'Kasir Toko Cabang';
+    transfer.return_reason = cleanReason;
+    transfer.return_admin_notes = null;
+
+    await this.createAuditLog({
+      action: 'STOCK_TRANSFER_RETURN_REQUESTED',
+      entity_name: 'stock_transfers',
+      entity_id: transfer.id,
+      new_data: {
+        transfer_number: transfer.transfer_number,
+        return_requested_by: transfer.return_requested_by,
+        return_reason: transfer.return_reason,
+        items_count: items.length,
+      },
+    });
+
+    globalState.saveToFile();
+
+    return (await this.getStockTransferById(transferId))!;
+  },
+
+  /**
+   * PERSETUJUAN RETUR BARANG OLEH SUPER ADMIN (RETURN_REQUESTED -> RETURNED)
+   * Menyetujui penolakan kasir dan mengembalikan stok ke Gudang Pusat (source_store_id) via TRANSFER_IN.
+   */
+  async approveTransferReturn(
+    transferId: string,
+    approvedBy?: string | null,
+    adminNotes?: string | null
+  ): Promise<StockTransfer> {
+    const transfer = globalState.stockTransfers.find((t) => t.id === transferId);
+    if (!transfer) {
+      throw new Error(`Mutasi dengan ID '${transferId}' tidak ditemukan.`);
+    }
+
+    if (transfer.status !== 'RETURN_REQUESTED') {
+      throw new Error(`Hanya mutasi berstatus RETURN_REQUESTED yang dapat disetujui returnya. Status saat ini: '${transfer.status}'`);
+    }
+
+    const items = globalState.stockTransferItems.filter((it) => it.stock_transfer_id === transferId);
+    const cleanAdminNotes = adminNotes?.trim() || null;
+
+    // Kembalikan stok ke Gudang Pusat (source_store_id)
+    for (const item of items) {
+      await this.recordStockMovement({
+        store_id: transfer.source_store_id,
+        product_id: item.product_id,
+        movement_type: 'TRANSFER_IN',
+        quantity_delta: item.quantity,
+        cost_per_unit: item.unit_cost,
+        reference_id: transfer.transfer_number,
+        notes: `Pengembalian Retur Mutasi ke Gudang (${transfer.transfer_number}) - Alasan Kasir: ${transfer.return_reason || '-'}${cleanAdminNotes ? ` | Catatan Super Admin: ${cleanAdminNotes}` : ''}`,
+        created_by: approvedBy || 'Super Admin',
+      });
+    }
+
+    transfer.status = 'RETURNED';
+    transfer.return_approved_at = new Date().toISOString();
+    transfer.return_approved_by = approvedBy?.trim() || 'Super Admin';
+    transfer.return_admin_notes = cleanAdminNotes;
+
+    await this.createAuditLog({
+      action: 'STOCK_TRANSFER_RETURN_APPROVED',
+      entity_name: 'stock_transfers',
+      entity_id: transfer.id,
+      new_data: {
+        transfer_number: transfer.transfer_number,
+        return_approved_by: transfer.return_approved_by,
+        return_reason: transfer.return_reason,
+        return_admin_notes: transfer.return_admin_notes,
+        restored_to_store_id: transfer.source_store_id,
+        items_count: items.length,
+      },
+    });
+
+    globalState.saveToFile();
+
+    return (await this.getStockTransferById(transferId))!;
+  },
+
+  /**
+   * PENOLAKAN RETUR OLEH SUPER ADMIN (RETURN_REQUESTED -> IN_TRANSIT)
+   * Jika Super Admin menilai barang tetap harus diterima kasir (misal salah cek), kembalikan status ke IN_TRANSIT.
+   */
+  async rejectTransferReturn(
+    transferId: string,
+    rejectedBy?: string | null,
+    adminNotes?: string | null
+  ): Promise<StockTransfer> {
+    const transfer = globalState.stockTransfers.find((t) => t.id === transferId);
+    if (!transfer) {
+      throw new Error(`Mutasi dengan ID '${transferId}' tidak ditemukan.`);
+    }
+
+    if (transfer.status !== 'RETURN_REQUESTED') {
+      throw new Error(`Hanya mutasi berstatus RETURN_REQUESTED yang dapat dikembalikan ke kasir. Status saat ini: '${transfer.status}'`);
+    }
+
+    const cleanAdminNotes = adminNotes?.trim() || 'Retur ditolak Super Admin, silakan cek & terima ulang barang.';
+    transfer.status = 'IN_TRANSIT';
+    transfer.return_admin_notes = cleanAdminNotes;
+
+    await this.createAuditLog({
+      action: 'STOCK_TRANSFER_RETURN_REJECTED',
+      entity_name: 'stock_transfers',
+      entity_id: transfer.id,
+      new_data: {
+        transfer_number: transfer.transfer_number,
+        rejected_by: rejectedBy || 'Super Admin',
+        return_admin_notes: cleanAdminNotes,
+      },
+    });
+
+    globalState.saveToFile();
+
+    return (await this.getStockTransferById(transferId))!;
+  },
+
   // AUDIT LOGS
   async createAuditLog(log: Omit<AuditLog, 'id' | 'created_at'>): Promise<AuditLog> {
     const newLog: AuditLog = {
@@ -2821,9 +2986,12 @@ export const repository = {
     config: Partial<LoyaltyConfig>,
     updatedBy?: string
   ): Promise<LoyaltyConfig> {
+    const cleanPatch = Object.fromEntries(
+      Object.entries(config).filter(([, v]) => v !== undefined)
+    ) as Partial<LoyaltyConfig>;
     globalState.loyaltyConfig = {
       ...globalState.loyaltyConfig,
-      ...config,
+      ...cleanPatch,
     };
     globalState.saveToFile();
 
@@ -3296,8 +3464,11 @@ export const repository = {
     }
 
     // 12. TAMBAH POIN EARNED KE LEDGER (Jika Member & Nilai Belanja Memenuhi Syarat)
+    // Berlaku kelipatan penuh (Math.floor): misal Rp 30.000 = 1.500 poin, Rp 45.000 tetap 1.500 poin, Rp 60.000 = 3.000 poin
     if (data.member_id && globalState.loyaltyConfig.is_active && finalAmount > 0) {
-      const earned = Math.floor(finalAmount / globalState.loyaltyConfig.spend_per_point);
+      const spendStep = globalState.loyaltyConfig.spend_per_point || 30000;
+      const pointsPerStep = globalState.loyaltyConfig.points_per_step ?? 1500;
+      const earned = Math.floor(finalAmount / spendStep) * pointsPerStep;
       if (earned > 0) {
         newSale.points_earned = earned;
         await this.recordPointTransaction({

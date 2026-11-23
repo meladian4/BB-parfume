@@ -24,6 +24,8 @@ import {
   MessageSquare,
   AlertCircle,
   CheckCircle2,
+  XCircle,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function CashierTransfersPage() {
@@ -31,7 +33,7 @@ export default function CashierTransfersPage() {
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'IN_TRANSIT' | 'RECEIVED' | 'ALL'>('IN_TRANSIT');
+  const [activeTab, setActiveTab] = useState<'IN_TRANSIT' | 'RECEIVED' | 'RETURN' | 'ALL'>('IN_TRANSIT');
   const [search, setSearch] = useState('');
   const [selectedStoreId, setSelectedStoreId] = useState<string>('ALL');
 
@@ -43,6 +45,14 @@ export default function CashierTransfersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Modal Penolakan Penerimaan Barang (Retur ke Logistik Gudang)
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [transferToReturn, setTransferToReturn] = useState<StockTransfer | null>(null);
+  const [returnCashierName, setReturnCashierName] = useState('');
+  const [returnReason, setReturnReason] = useState('');
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
+  const [returnErrorMsg, setReturnErrorMsg] = useState('');
 
   useEffect(() => {
     loadInitialData();
@@ -132,6 +142,58 @@ export default function CashierTransfersPage() {
     }
   };
 
+  const handleOpenReturnModal = (transfer: StockTransfer) => {
+    setTransferToReturn(transfer);
+    const defaultName = user?.full_name || (user?.email ? user.email.split('@')[0] : 'Kasir Toko');
+    setReturnCashierName(defaultName);
+    setReturnReason('');
+    setReturnErrorMsg('');
+    setIsReturnModalOpen(true);
+  };
+
+  const handleConfirmReturn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transferToReturn) return;
+
+    if (!returnReason.trim()) {
+      setReturnErrorMsg('Mohon isi alasan penolakan / ketidaksesuaian barang.');
+      return;
+    }
+
+    setReturnSubmitting(true);
+    setReturnErrorMsg('');
+
+    try {
+      const res = await fetch(`/api/transfers/${transferToReturn.id}/return-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requested_by: returnCashierName.trim() || 'Kasir Toko Cabang',
+          reason: returnReason.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal mengajukan penolakan penerimaan barang.');
+      }
+
+      setIsReturnModalOpen(false);
+      setActionSuccess(
+        `Penolakan barang ${transferToReturn.transfer_number} terkirim! Menunggu approval Super Admin untuk dikembalikan ke Logistik Gudang.`
+      );
+      setTimeout(() => setActionSuccess(null), 7000);
+
+      const trRes = await fetch('/api/transfers').then((r) => r.json());
+      const trData = trRes?.data || trRes?.transfers || [];
+      setTransfers(Array.isArray(trData) ? trData : []);
+    } catch (err: unknown) {
+      setReturnErrorMsg(err instanceof Error ? err.message : 'Terjadi kesalahan sistem saat menolak barang.');
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const cashierStoreId = !isSuperAdmin ? (user?.assigned_store_id || selectedStoreId) : null;
 
@@ -151,6 +213,7 @@ export default function CashierTransfersPage() {
       // Tab filter
       if (activeTab === 'IN_TRANSIT' && t.status !== 'IN_TRANSIT') return false;
       if (activeTab === 'RECEIVED' && t.status !== 'RECEIVED') return false;
+      if (activeTab === 'RETURN' && t.status !== 'RETURN_REQUESTED' && t.status !== 'RETURNED') return false;
 
       // Search filter
       if (search.trim()) {
@@ -179,6 +242,14 @@ export default function CashierTransfersPage() {
       if (cashierStoreId && t.destination_store_id !== cashierStoreId) return false;
       if (isSuperAdmin && selectedStoreId !== 'ALL' && t.destination_store_id !== selectedStoreId) return false;
       return t.status === 'RECEIVED';
+    }).length;
+  }, [transfers, selectedStoreId, cashierStoreId, isSuperAdmin]);
+
+  const returnCount = useMemo(() => {
+    return transfers.filter((t) => {
+      if (cashierStoreId && t.destination_store_id !== cashierStoreId) return false;
+      if (isSuperAdmin && selectedStoreId !== 'ALL' && t.destination_store_id !== selectedStoreId) return false;
+      return t.status === 'RETURN_REQUESTED' || t.status === 'RETURNED';
     }).length;
   }, [transfers, selectedStoreId, cashierStoreId, isSuperAdmin]);
 
@@ -271,6 +342,16 @@ export default function CashierTransfersPage() {
                 }`}
               >
                 Riwayat Selesai Diterima ({receivedCount})
+              </button>
+              <button
+                onClick={() => setActiveTab('RETURN')}
+                className={`pb-2 px-3 font-medium transition flex items-center gap-1.5 ${
+                  activeTab === 'RETURN'
+                    ? 'text-rose-400 border-b-2 border-rose-400 font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>Ditolak / Retur ({returnCount})</span>
               </button>
               <button
                 onClick={() => setActiveTab('ALL')}
@@ -392,6 +473,47 @@ export default function CashierTransfersPage() {
                                 <div className="text-[10px] text-amber-300/80 mt-1 font-medium">
                                   Disetujui Super Admin: {formatDateTimeJakarta(tr.approved_at || tr.shipped_at)}
                                 </div>
+                                {tr.return_admin_notes && (
+                                  <div className="mt-1 p-1.5 rounded-lg bg-amber-950/40 border border-amber-500/30 text-[10px] text-amber-200">
+                                    Catatan Super Admin: {tr.return_admin_notes}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {tr.status === 'RETURN_REQUESTED' && (
+                              <div className="space-y-1">
+                                <Badge variant="rose" size="sm">
+                                  <RotateCcw className="w-3 h-3 inline mr-1" />
+                                  Menunggu Approval Retur Super Admin
+                                </Badge>
+                                <div className="text-[10px] text-rose-300/90">
+                                  Ditolak Kasir: {tr.return_requested_by || 'Kasir'} ({formatDateTimeJakarta(tr.return_requested_at)})
+                                </div>
+                                {tr.return_reason && (
+                                  <div className="p-2 rounded-lg bg-rose-950/50 border border-rose-500/30 text-[11px] text-rose-200">
+                                    <span className="font-semibold text-rose-400 block text-[9px] uppercase tracking-wider">Alasan Penolakan:</span>
+                                    <span className="italic">"{tr.return_reason}"</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {tr.status === 'RETURNED' && (
+                              <div className="space-y-1">
+                                <Badge variant="rose" size="sm">
+                                  <RotateCcw className="w-3 h-3 inline mr-1" />
+                                  Dikembalikan ke Logistik Gudang
+                                </Badge>
+                                <div className="text-[10px] text-slate-400">
+                                  Disetujui Super Admin: {formatDateTimeJakarta(tr.return_approved_at)}
+                                </div>
+                                {tr.return_reason && (
+                                  <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/25 text-[11px] text-rose-200">
+                                    <span className="font-semibold text-rose-400 block text-[9px] uppercase tracking-wider">Alasan Retur:</span>
+                                    <span className="italic">"{tr.return_reason}"</span>
+                                  </div>
+                                )}
                               </div>
                             )}
 
@@ -437,15 +559,40 @@ export default function CashierTransfersPage() {
 
                           <td className="py-3.5 px-4 text-right">
                             {tr.status === 'IN_TRANSIT' && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-900/30"
-                                onClick={() => handleOpenReceiveModal(tr)}
-                              >
-                                <CheckCheck className="w-4 h-4 mr-1.5" />
-                                <span>Barang Diterima</span>
-                              </Button>
+                              <div className="flex items-center justify-end gap-2 flex-wrap">
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-900/30"
+                                  onClick={() => handleOpenReceiveModal(tr)}
+                                >
+                                  <CheckCheck className="w-4 h-4 mr-1.5" />
+                                  <span>Barang Diterima</span>
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="bg-rose-950/60 text-rose-300 border-rose-700/70 hover:bg-rose-900/70 font-semibold"
+                                  onClick={() => handleOpenReturnModal(tr)}
+                                >
+                                  <XCircle className="w-4 h-4 mr-1.5" />
+                                  <span>Tolak Barang</span>
+                                </Button>
+                              </div>
+                            )}
+
+                            {tr.status === 'RETURN_REQUESTED' && (
+                              <span className="text-[11px] text-amber-400 font-semibold inline-flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" />
+                                <span>Menunggu Approval Super Admin</span>
+                              </span>
+                            )}
+
+                            {tr.status === 'RETURNED' && (
+                              <span className="text-[11px] text-rose-400 font-semibold inline-flex items-center gap-1">
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Stok Kembali ke Gudang</span>
+                              </span>
                             )}
 
                             {tr.status === 'RECEIVED' && (
@@ -594,6 +741,119 @@ export default function CashierTransfersPage() {
               >
                 <CheckCheck className="w-4 h-4 mr-1.5" />
                 <span>Simpan & Konfirmasi Diterima</span>
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Modal Penolakan Penerimaan Barang (Retur ke Logistik Gudang) */}
+      <Modal
+        isOpen={isReturnModalOpen}
+        onClose={() => !returnSubmitting && setIsReturnModalOpen(false)}
+        title="Tolak Penerimaan Barang (Retur ke Gudang)"
+        description="Gunakan fitur ini jika barang fisik tidak sesuai surat jalan, rusak, atau bocor. Penolakan akan diteruskan ke Super Admin untuk persetujuan pengembalian stok ke Logistik Gudang."
+        maxWidth="lg"
+      >
+        {transferToReturn && (
+          <form onSubmit={handleConfirmReturn} className="space-y-4">
+            <div className="p-3 rounded-xl bg-[#162036] border border-rose-900/60 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-slate-400 block text-[10px]">Nomor Surat Jalan</span>
+                <span className="font-mono font-bold text-white text-sm">{transferToReturn.transfer_number}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-slate-400 block text-[10px]">Dikembalikan ke</span>
+                <span className="font-bold text-rose-300">{transferToReturn.source_store?.name}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5 text-rose-400" />
+                <span>Barang yang Ditolak:</span>
+              </label>
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-800/80 text-slate-400 text-[10px] uppercase font-semibold">
+                    <tr>
+                      <th className="py-2 px-3">Nama Produk</th>
+                      <th className="py-2 px-3 text-right">Kuantitas</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-slate-200">
+                    {transferToReturn.items?.map((it) => (
+                      <tr key={it.id}>
+                        <td className="py-2 px-3 font-medium">{it.product?.name}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-white">
+                          {it.quantity} {formatProductUnit(it.product)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">
+                Nama Petugas Kasir Pemeriksa <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={returnCashierName}
+                onChange={(e) => setReturnCashierName(e.target.value)}
+                placeholder="Contoh: Siti - Kasir Kendal Kota"
+                className="w-full px-3 py-2 bg-[#0A0E1A] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span>Alasan Ketidaksesuaian / Penolakan <span className="text-rose-400">*</span></span>
+                <span className="text-[10px] text-rose-400 font-normal">Wajib diisi</span>
+              </label>
+              <textarea
+                required
+                rows={3}
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                placeholder="Contoh: Varian tidak sesuai surat jalan / jumlah fisik kurang / botol bocor saat diterima."
+                className="w-full px-3 py-2 bg-[#0A0E1A] border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="p-3 rounded-lg bg-amber-950/30 border border-amber-800/40 text-[11px] text-amber-300">
+              Stok cabang <strong>tidak akan bertambah</strong>. Pengajuan retur akan muncul di menu <strong>Approval Mutasi Super Admin</strong> untuk mengembalikan stok ke Logistik Gudang.
+            </div>
+
+            {returnErrorMsg && (
+              <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{returnErrorMsg}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={returnSubmitting}
+                onClick={() => setIsReturnModalOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="danger"
+                size="sm"
+                className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
+                isLoading={returnSubmitting}
+              >
+                <RotateCcw className="w-4 h-4 mr-1.5" />
+                <span>Konfirmasi Tolak &amp; Ajukan Retur</span>
               </Button>
             </div>
           </form>

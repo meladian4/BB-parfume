@@ -1321,25 +1321,25 @@ export default function CashierPOSPage() {
                     <div className="p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-[10px] space-y-0.5">
                       <div className="flex items-center justify-between text-emerald-300 font-semibold">
                         <span>Reward Belanja Member:</span>
-                        <span>Rp 1.500 per kelipatan Rp 30.000</span>
+                        <span>{(loyaltyConfig?.points_per_step ?? 1500).toLocaleString('id-ID')} Poin per kelipatan {formatIDR(loyaltyConfig?.spend_per_point || 30000)}</span>
                       </div>
                       {finalAmount > 0 && (
                         <div className="flex items-center justify-between text-slate-300">
                           <span>Potensi Poin Transaksi Ini:</span>
                           <span className="font-bold text-[#E5C365]">
-                            +{Math.floor(finalAmount / (loyaltyConfig?.spend_per_point || 30000))} Poin (+{formatIDR(Math.floor(finalAmount / (loyaltyConfig?.spend_per_point || 30000)) * (loyaltyConfig?.point_value_idr || 1500))})
+                            +{(Math.floor(finalAmount / (loyaltyConfig?.spend_per_point || 30000)) * (loyaltyConfig?.points_per_step ?? 1500)).toLocaleString('id-ID')} Poin (+{formatIDR(Math.floor(finalAmount / (loyaltyConfig?.spend_per_point || 30000)) * (loyaltyConfig?.points_per_step ?? 1500) * (loyaltyConfig?.point_value_idr ?? 1))})
                           </span>
                         </div>
                       )}
                     </div>
 
                     {/* Point Redemption Subpanel */}
-                    {selectedMember.points_balance >= (loyaltyConfig?.min_redeem_points || 1) && (
+                    {selectedMember.points_balance >= (loyaltyConfig?.min_redeem_points || 1500) && (
                       <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5">
                         <div className="flex justify-between items-center text-[10px]">
                           <span className="text-slate-300 font-semibold">Tukar Poin Diskon:</span>
                           <span className="text-[#D4AF37]">
-                            Maks: {selectedMember.points_balance} pts ({formatIDR(selectedMember.points_balance * (loyaltyConfig?.point_value_idr || 1500))})
+                            Maks: {selectedMember.points_balance.toLocaleString('id-ID')} pts ({formatIDR(selectedMember.points_balance * (loyaltyConfig?.point_value_idr ?? 1))})
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -1352,9 +1352,9 @@ export default function CashierPOSPage() {
                               const val = Math.max(0, Math.min(selectedMember.points_balance, Number(e.target.value) || 0));
                               setPointsToRedeemInput(val.toString());
                             }}
-                            className="w-16 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs text-[#D4AF37] font-bold text-center"
+                            className="w-20 px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs text-[#D4AF37] font-bold text-center"
                           />
-                          <span className="text-[10px] text-slate-400">pts (1 pts = {formatIDR(loyaltyConfig?.point_value_idr || 1500)})</span>
+                          <span className="text-[10px] text-slate-400">pts (1 pts = {formatIDR(loyaltyConfig?.point_value_idr ?? 1)})</span>
                           {pointDiscount > 0 && (
                             <span className="text-xs font-bold text-emerald-400 ml-auto">
                               -{formatIDR(pointDiscount)}
@@ -2092,7 +2092,7 @@ export default function CashierPOSPage() {
                 {completedSale?.points_earned !== undefined && completedSale.points_earned > 0 && (
                   <div className="flex justify-between font-bold text-emerald-700 pt-1 border-t border-dashed border-gray-300">
                     <span>Reward Poin Didapat:</span>
-                    <span>+{completedSale.points_earned} Poin</span>
+                    <span>+{completedSale.points_earned.toLocaleString('id-ID')} Poin</span>
                   </div>
                 )}
               </div>

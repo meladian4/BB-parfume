@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Crown,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function SuperAdminTransfersApprovalPage() {
@@ -161,6 +162,64 @@ export default function SuperAdminTransfersApprovalPage() {
     }
   };
 
+  // 3. PERSETUJUAN RETUR BARANG DARI KASIR KE GUDANG (RETURN_REQUESTED -> RETURNED)
+  const handleApproveReturn = async (transfer: StockTransfer) => {
+    const adminNote = prompt(
+      `OTORISASI RETUR SUPER ADMIN:\nSetujui pengembalian barang ${transfer.transfer_number} dari ${transfer.destination_store?.name} kembali ke ${transfer.source_store?.name}?\n\nAlasan Kasir: "${transfer.return_reason || '-'}"\n\nStok akan otomatis dikembalikan ke Gudang Pusat. Catatan Super Admin (opsional):`,
+      'Retur disetujui, stok dikembalikan ke Logistik Gudang'
+    );
+    if (adminNote === null) return;
+
+    setActionLoadingId(transfer.id);
+    try {
+      const res = await fetch(`/api/transfers/${transfer.id}/return-approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_role: 'SUPER_ADMIN',
+          approved_by: 'Super Admin Kendal (Owner)',
+          admin_notes: adminNote.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyetujui retur barang ke gudang.');
+      await loadData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Gagal menyetujui retur barang ke gudang.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // 4. TOLAK RETUR / KEMBALIKAN KE KASIR (RETURN_REQUESTED -> IN_TRANSIT)
+  const handleRejectReturn = async (transfer: StockTransfer) => {
+    const adminNote = prompt(
+      `Kembalikan surat jalan ${transfer.transfer_number} ke status DALAM PERJALANAN agar dicek & diterima ulang oleh kasir ${transfer.destination_store?.name}?\n\nMasukkan catatan untuk kasir:`,
+      'Silakan cek ulang fisik barang bersama kurir & konfirmasi penerimaan.'
+    );
+    if (adminNote === null) return;
+
+    setActionLoadingId(transfer.id);
+    try {
+      const res = await fetch(`/api/transfers/${transfer.id}/return-reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_role: 'SUPER_ADMIN',
+          rejected_by: 'Super Admin Kendal (Owner)',
+          admin_notes: adminNote.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengembalikan status kiriman ke kasir.');
+      await loadData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Gagal mengembalikan status kiriman ke kasir.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   // Perhitungan Dokumen Bulanan:
   const isRejectedVisibleInCurrentMonth = (t: StockTransfer) => {
     if (t.status !== 'REJECTED') return true;
@@ -179,12 +238,19 @@ export default function SuperAdminTransfersApprovalPage() {
       if (activeTab === 'PENDING_APPROVAL') {
         return t.status === 'PENDING_APPROVAL' || t.status === 'PENDING_SHIPMENT';
       }
+      if (activeTab === 'RETURN') {
+        return t.status === 'RETURN_REQUESTED' || t.status === 'RETURNED';
+      }
       return t.status === activeTab;
     });
   }, [visibleTransfers, activeTab]);
 
   const pendingCount = visibleTransfers.filter(
     (t) => t.status === 'PENDING_APPROVAL' || t.status === 'PENDING_SHIPMENT'
+  ).length;
+  const returnRequestedCount = visibleTransfers.filter((t) => t.status === 'RETURN_REQUESTED').length;
+  const returnTotalCount = visibleTransfers.filter(
+    (t) => t.status === 'RETURN_REQUESTED' || t.status === 'RETURNED'
   ).length;
   const inTransitCount = visibleTransfers.filter((t) => t.status === 'IN_TRANSIT').length;
   const receivedCount = visibleTransfers.filter((t) => t.status === 'RECEIVED').length;
@@ -212,6 +278,20 @@ export default function SuperAdminTransfersApprovalPage() {
           <Badge variant="emerald" size="sm">
             <CheckCircle className="w-3 h-3 inline mr-1" />
             Diterima di Toko (Selesai)
+          </Badge>
+        );
+      case 'RETURN_REQUESTED':
+        return (
+          <Badge variant="rose" size="sm">
+            <RotateCcw className="w-3 h-3 inline mr-1" />
+            Ditolak Kasir (Menunggu Approval Retur)
+          </Badge>
+        );
+      case 'RETURNED':
+        return (
+          <Badge variant="rose" size="sm">
+            <RotateCcw className="w-3 h-3 inline mr-1" />
+            Dikembalikan ke Logistik Gudang
           </Badge>
         );
       case 'REJECTED':
@@ -247,6 +327,32 @@ export default function SuperAdminTransfersApprovalPage() {
         </div>
       </div>
 
+      {/* Alert Banner Penolakan Barang dari Kasir */}
+      {returnRequestedCount > 0 && (
+        <div className="p-4 rounded-xl bg-rose-950/50 border border-rose-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="text-xs">
+              <p className="font-bold text-rose-200">
+                Ada {returnRequestedCount} Penolakan Penerimaan Barang dari Kasir Cabang!
+              </p>
+              <p className="text-rose-300/80 mt-0.5">
+                Barang fisik dilaporkan tidak sesuai. Tinjau alasan kasir dan setujui retur agar stok otomatis dikembalikan ke Logistik Gudang.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="danger"
+            size="sm"
+            className="bg-rose-600 hover:bg-rose-500 text-white font-bold shrink-0"
+            onClick={() => setActiveTab('RETURN')}
+          >
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+            <span>Tinjau Retur ({returnRequestedCount})</span>
+          </Button>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-2">
         <div className="flex flex-wrap text-xs gap-1 sm:gap-2">
@@ -260,6 +366,17 @@ export default function SuperAdminTransfersApprovalPage() {
           >
             <span>Menunggu Approval ({pendingCount})</span>
             {pendingCount > 0 && <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />}
+          </button>
+          <button
+            onClick={() => setActiveTab('RETURN')}
+            className={`pb-2 px-3 font-medium transition flex items-center gap-1.5 ${
+              activeTab === 'RETURN'
+                ? 'text-rose-400 border-b-2 border-rose-400 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>Retur Kasir ({returnTotalCount})</span>
+            {returnRequestedCount > 0 && <span className="w-2 h-2 rounded-full bg-rose-400 animate-pulse" />}
           </button>
           <button
             onClick={() => setActiveTab('ALL')}
@@ -412,6 +529,37 @@ export default function SuperAdminTransfersApprovalPage() {
                             )}
                           </div>
                         )}
+                        {tr.status === 'RETURN_REQUESTED' && (
+                          <div className="space-y-1 mt-1 text-left">
+                            <div className="text-[10px] text-rose-300 font-medium">
+                              Ditolak Kasir: {tr.return_requested_by || 'Kasir'} ({formatDateTimeJakarta(tr.return_requested_at)})
+                            </div>
+                            {tr.return_reason && (
+                              <div className="p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-[11px] text-rose-200">
+                                <span className="font-semibold text-rose-400 block text-[9px] uppercase tracking-wider">Alasan Ketidaksesuaian Kasir:</span>
+                                <span className="italic">"{tr.return_reason}"</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {tr.status === 'RETURNED' && (
+                          <div className="space-y-1 mt-1 text-left">
+                            <div className="text-[10px] text-rose-300 font-medium">
+                              Disetujui Retur: {formatDateTimeJakarta(tr.return_approved_at)}
+                            </div>
+                            {tr.return_reason && (
+                              <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/30 text-[11px] text-rose-200">
+                                <span className="font-semibold text-rose-400 block text-[9px] uppercase tracking-wider">Alasan Kasir:</span>
+                                <span className="italic">"{tr.return_reason}"</span>
+                              </div>
+                            )}
+                            {tr.return_admin_notes && (
+                              <div className="text-[10px] text-slate-400">
+                                Catatan Admin: {tr.return_admin_notes}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {tr.status === 'REJECTED' && (
                           <div className="text-[10px] text-rose-400/90 mt-1">
                             Ditolak: {formatDateTimeJakarta(tr.rejected_at)}
@@ -476,6 +624,42 @@ export default function SuperAdminTransfersApprovalPage() {
                             </span>
                             <div className="text-[10px] text-slate-400">
                               Terverifikasi di {tr.destination_store?.name}
+                            </div>
+                          </div>
+                        )}
+
+                        {tr.status === 'RETURN_REQUESTED' && (
+                          <div className="flex flex-col items-end gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-sm"
+                              isLoading={actionLoadingId === tr.id}
+                              onClick={() => handleApproveReturn(tr)}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                              <span>Setujui Retur ke Gudang</span>
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="text-[10px] h-7 px-2.5 bg-slate-800/80 text-amber-300 border-amber-700/50 hover:bg-amber-950/50"
+                              isLoading={actionLoadingId === tr.id}
+                              onClick={() => handleRejectReturn(tr)}
+                            >
+                              <span>Kembalikan ke Kasir (Cek Ulang)</span>
+                            </Button>
+                          </div>
+                        )}
+
+                        {tr.status === 'RETURNED' && (
+                          <div className="space-y-1 text-right">
+                            <span className="text-[11px] text-rose-300 font-semibold inline-flex items-center gap-1">
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Stok Kembali ke Gudang</span>
+                            </span>
+                            <div className="text-[10px] text-slate-400">
+                              Restored ke {tr.source_store?.name}
                             </div>
                           </div>
                         )}

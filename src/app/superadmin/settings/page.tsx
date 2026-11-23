@@ -13,8 +13,9 @@ export default function SuperAdminSettingsPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
     spend_per_point: '30000',
-    point_value_idr: '1500',
-    min_redeem_points: '1',
+    points_per_step: '1500',
+    point_value_idr: '1',
+    min_redeem_points: '1500',
     is_active: true,
   });
   const [loading, setLoading] = useState(true);
@@ -36,8 +37,9 @@ export default function SuperAdminSettingsPage() {
       if (cRes.config) {
         setFormData({
           spend_per_point: String(cRes.config.spend_per_point ?? 30000),
-          point_value_idr: String(cRes.config.point_value_idr ?? 1500),
-          min_redeem_points: String(cRes.config.min_redeem_points ?? 1),
+          points_per_step: String(cRes.config.points_per_step ?? 1500),
+          point_value_idr: String(cRes.config.point_value_idr ?? 1),
+          min_redeem_points: String(cRes.config.min_redeem_points ?? 1500),
           is_active: Boolean(cRes.config.is_active),
         });
       }
@@ -59,8 +61,9 @@ export default function SuperAdminSettingsPage() {
       setSuccessMessage(null);
       const payload: LoyaltyConfig = {
         spend_per_point: Number(formData.spend_per_point) || 30000,
-        point_value_idr: Number(formData.point_value_idr) || 0,
-        min_redeem_points: Number(formData.min_redeem_points) || 1,
+        points_per_step: Number(formData.points_per_step) || 1500,
+        point_value_idr: Number(formData.point_value_idr) || 1,
+        min_redeem_points: Number(formData.min_redeem_points) || 1500,
         is_active: formData.is_active,
       };
       const res = await fetch('/api/loyalty/config', {
@@ -176,10 +179,10 @@ export default function SuperAdminSettingsPage() {
                 <div className="space-y-4 text-xs">
                   <div>
                     <label className="font-semibold text-slate-200 block mb-1">
-                      Nilai Belanja Memenuhi Syarat per 1 Poin (IDR)
+                      Nominal Belanja per Kelipatan (IDR)
                     </label>
                     <p className="text-[11px] text-slate-400 mb-1.5">
-                      Setiap pelanggan belanja kelipatan nominal ini (Rp 30.000), sistem otomatis memberikan 1 poin (EARN senilai Rp 1.500).
+                      Setiap pelanggan belanja kelipatan penuh nominal ini ({formatIDR(Number(formData.spend_per_point) || 30000)}), sistem otomatis memberikan {(Number(formData.points_per_step) || 1500).toLocaleString('id-ID')} poin. Jika belum mencapai kelipatan berikutnya, tidak mendapat kelipatan tambahan.
                     </p>
                     <Input
                       type="number"
@@ -189,8 +192,24 @@ export default function SuperAdminSettingsPage() {
                       required
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Kebijakan: Rp 30.000 per transaksi &amp; kelipatannya (Belanja Rp 60.000 = 2 poin, Rp 90.000 = 3 poin)
+                      Kebijakan: Rp 30.000 = 1.500 poin | Rp 45.000 / Rp 59.999 tetap 1.500 poin | Rp 60.000 = 3.000 poin
                     </p>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-200 block mb-1">
+                      Jumlah Poin per 1x Kelipatan Belanja (Poin)
+                    </label>
+                    <p className="text-[11px] text-slate-400 mb-1.5">
+                      Jumlah poin yang didapat pelanggan setiap mencapai 1x kelipatan belanja (default: 1.500 poin per Rp 30.000).
+                    </p>
+                    <Input
+                      type="number"
+                      value={formData.points_per_step}
+                      onChange={(e) => setFormData({ ...formData, points_per_step: e.target.value })}
+                      placeholder="1500"
+                      required
+                    />
                   </div>
 
                   <div>
@@ -198,17 +217,17 @@ export default function SuperAdminSettingsPage() {
                       Nilai Diskon Rupiah per 1 Poin Penukaran (IDR)
                     </label>
                     <p className="text-[11px] text-slate-400 mb-1.5">
-                      Nilai potongan harga tunai yang didapat pelanggan untuk setiap 1 poin yang ditukarkan (REDEEM = Rp 1.500).
+                      Nilai potongan harga tunai untuk setiap 1 poin yang ditukarkan (default: 1 Poin = Rp 1, sehingga 1.500 Poin = Rp 1.500).
                     </p>
                     <Input
                       type="number"
                       value={formData.point_value_idr}
                       onChange={(e) => setFormData({ ...formData, point_value_idr: e.target.value })}
-                      placeholder="1500"
+                      placeholder="1"
                       required
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Kebijakan: Rp 1.500 per poin (Tukar 2 poin = diskon Rp 3.000, tukar 10 poin = diskon Rp 15.000)
+                      Kebijakan: 1 poin = {formatIDR(Number(formData.point_value_idr) || 1)} (Tukar 1.500 poin = diskon {formatIDR(1500 * (Number(formData.point_value_idr) || 1))}, tukar 3.000 poin = diskon {formatIDR(3000 * (Number(formData.point_value_idr) || 1))})
                     </p>
                   </div>
 
@@ -217,17 +236,17 @@ export default function SuperAdminSettingsPage() {
                       Batas Minimal Penukaran Poin Kasir (Poin)
                     </label>
                     <p className="text-[11px] text-slate-400 mb-1.5">
-                      Jumlah poin minimum yang harus dimiliki pelanggan sebelum dapat ditukarkan di POS (default: 1 Poin / Rp 1.500).
+                      Jumlah poin minimum yang harus dimiliki pelanggan sebelum dapat ditukarkan di POS (default: 1.500 Poin).
                     </p>
                     <Input
                       type="number"
                       value={formData.min_redeem_points}
                       onChange={(e) => setFormData({ ...formData, min_redeem_points: e.target.value })}
-                      placeholder="1"
+                      placeholder="1500"
                       required
                     />
                     <p className="text-[10px] text-slate-500 mt-1">
-                      Member dapat menukarkan poin mulai dari 1 poin (Rp 1.500 potongan langsung).
+                      Member dapat menukarkan poin mulai dari {(Number(formData.min_redeem_points) || 1500).toLocaleString('id-ID')} poin ({formatIDR((Number(formData.min_redeem_points) || 1500) * (Number(formData.point_value_idr) || 1))} potongan langsung).
                     </p>
                   </div>
                 </div>
@@ -253,10 +272,10 @@ export default function SuperAdminSettingsPage() {
 
               <div className="space-y-3 text-xs text-slate-300">
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Simulasi Belanja Min. Kelipatan</p>
-                  <p className="text-xs font-bold text-white">Belanja Rp 30.000</p>
+                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Simulasi Belanja 1x Kelipatan</p>
+                  <p className="text-xs font-bold text-white">Belanja Rp 30.000 (atau Rp 45.000 / Rp 59.000)</p>
                   <p className="text-emerald-400 font-bold">
-                    Poin Diperoleh: +1 Poin (Senilai Rp 1.500)
+                    Poin Diperoleh: +{(Math.floor(45000 / (Number(formData.spend_per_point) || 30000)) * (Number(formData.points_per_step) || 1500)).toLocaleString('id-ID')} Poin (Belum 2x, tetap 1x kelipatan)
                   </p>
                 </div>
 
@@ -264,15 +283,15 @@ export default function SuperAdminSettingsPage() {
                   <p className="text-[10px] text-slate-400 uppercase font-semibold">Simulasi Belanja 1 Botol</p>
                   <p className="text-xs font-bold text-white">Parfum 50ml ({formatIDR(185000)})</p>
                   <p className="text-emerald-400 font-bold">
-                    Poin Diperoleh: +{Math.floor(185000 / (Number(formData.spend_per_point) || 30000))} Poin (+{formatIDR(Math.floor(185000 / (Number(formData.spend_per_point) || 30000)) * (Number(formData.point_value_idr) || 1500))})
+                    Poin Diperoleh: +{(Math.floor(185000 / (Number(formData.spend_per_point) || 30000)) * (Number(formData.points_per_step) || 1500)).toLocaleString('id-ID')} Poin (+{formatIDR(Math.floor(185000 / (Number(formData.spend_per_point) || 30000)) * (Number(formData.points_per_step) || 1500) * (Number(formData.point_value_idr) || 1))})
                   </p>
                 </div>
 
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-1">
-                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Simulasi Penukaran 10 Poin</p>
-                  <p className="text-xs font-bold text-white">10 Poin Pelanggan</p>
+                  <p className="text-[10px] text-slate-400 uppercase font-semibold">Simulasi Penukaran 3.000 Poin</p>
+                  <p className="text-xs font-bold text-white">3.000 Poin Pelanggan</p>
                   <p className="text-[#D4AF37] font-bold">
-                    Potongan Belanja: {formatIDR(10 * (Number(formData.point_value_idr) || 1500))}
+                    Potongan Belanja: {formatIDR(3000 * (Number(formData.point_value_idr) || 1))}
                   </p>
                 </div>
               </div>

@@ -25,6 +25,7 @@ import {
   Calendar,
   ShieldCheck,
   Crown,
+  RotateCcw,
 } from 'lucide-react';
 
 export default function TransfersPage() {
@@ -212,6 +213,9 @@ export default function TransfersPage() {
       if (activeTab === 'PENDING_APPROVAL') {
         return t.status === 'PENDING_APPROVAL' || t.status === 'PENDING_SHIPMENT';
       }
+      if (activeTab === 'RETURN') {
+        return t.status === 'RETURN_REQUESTED' || t.status === 'RETURNED';
+      }
       return t.status === activeTab;
     });
   }, [visibleTransfers, activeTab]);
@@ -222,6 +226,9 @@ export default function TransfersPage() {
   ).length;
   const inTransitCount = visibleTransfers.filter((t) => t.status === 'IN_TRANSIT').length;
   const receivedCount = visibleTransfers.filter((t) => t.status === 'RECEIVED').length;
+  const returnCount = visibleTransfers.filter(
+    (t) => t.status === 'RETURN_REQUESTED' || t.status === 'RETURNED'
+  ).length;
   const rejectedCount = visibleTransfers.filter((t) => t.status === 'REJECTED').length;
 
   const getStatusBadge = (status: StockTransfer['status']) => {
@@ -246,6 +253,20 @@ export default function TransfersPage() {
           <Badge variant="emerald" size="sm">
             <CheckCircle className="w-3 h-3 inline mr-1" />
             Diterima di Toko (Selesai)
+          </Badge>
+        );
+      case 'RETURN_REQUESTED':
+        return (
+          <Badge variant="rose" size="sm">
+            <RotateCcw className="w-3 h-3 inline mr-1" />
+            Ditolak Kasir (Menunggu Approval Retur)
+          </Badge>
+        );
+      case 'RETURNED':
+        return (
+          <Badge variant="rose" size="sm">
+            <RotateCcw className="w-3 h-3 inline mr-1" />
+            Dikembalikan ke Gudang
           </Badge>
         );
       case 'REJECTED':
@@ -329,6 +350,17 @@ export default function TransfersPage() {
             }`}
           >
             Selesai Diterima ({receivedCount})
+          </button>
+          <button
+            onClick={() => setActiveTab('RETURN')}
+            className={`pb-2 px-3 font-medium transition flex items-center gap-1.5 ${
+              activeTab === 'RETURN'
+                ? 'text-rose-400 border-b-2 border-rose-400 font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>Retur / Kembali ({returnCount})</span>
+            {returnCount > 0 && <span className="w-2 h-2 rounded-full bg-rose-400" />}
           </button>
           <button
             onClick={() => setActiveTab('REJECTED')}
@@ -452,6 +484,32 @@ export default function TransfersPage() {
                             )}
                           </div>
                         )}
+                        {tr.status === 'RETURN_REQUESTED' && (
+                          <div className="space-y-1 mt-1 text-left">
+                            <div className="text-[10px] text-rose-300 font-medium">
+                              Ditolak Kasir: {tr.return_requested_by || 'Kasir'} ({formatDateTimeJakarta(tr.return_requested_at)})
+                            </div>
+                            {tr.return_reason && (
+                              <div className="p-2 rounded-lg bg-rose-950/60 border border-rose-500/40 text-[11px] text-rose-200">
+                                <span className="font-semibold text-rose-400 block text-[9px] uppercase tracking-wider">Alasan Penolakan Kasir:</span>
+                                <span className="italic">"{tr.return_reason}"</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {tr.status === 'RETURNED' && (
+                          <div className="space-y-1 mt-1 text-left">
+                            <div className="text-[10px] text-emerald-300 font-medium">
+                              Stok Kembali ke Gudang: {formatDateTimeJakarta(tr.return_approved_at)}
+                            </div>
+                            {tr.return_reason && (
+                              <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/30 text-[11px] text-rose-200">
+                                <span className="font-semibold text-rose-400 block text-[9px] uppercase tracking-wider">Alasan Kasir:</span>
+                                <span className="italic">"{tr.return_reason}"</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {tr.status === 'REJECTED' && (
                           <div className="text-[10px] text-rose-400/90 mt-1">
                             Ditolak: {formatDateTimeJakarta(tr.rejected_at)}
@@ -504,6 +562,32 @@ export default function TransfersPage() {
                             </span>
                             <div className="text-[10px] text-slate-400">
                               Telah diverifikasi kasir toko
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Status RETURN_REQUESTED: Menunggu Approval Retur Super Admin */}
+                        {tr.status === 'RETURN_REQUESTED' && (
+                          <div className="text-right space-y-1">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30">
+                              <Clock className="w-3.5 h-3.5 text-rose-400" />
+                              <span>Menunggu Approval Retur Super Admin</span>
+                            </span>
+                            <div className="text-[10px] text-slate-400">
+                              Stok akan kembali ke gudang setelah disetujui Super Admin
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Status RETURNED: Stok Kembali ke Gudang */}
+                        {tr.status === 'RETURNED' && (
+                          <div className="text-right space-y-1">
+                            <span className="text-[11px] text-rose-300 font-semibold inline-flex items-center gap-1">
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Barang Kembali ke Gudang</span>
+                            </span>
+                            <div className="text-[10px] text-emerald-400">
+                              Stok gudang otomatis dikembalikan
                             </div>
                           </div>
                         )}

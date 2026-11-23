@@ -258,7 +258,7 @@ export function buildReceiptEscPosData(
   }
 
   if (sale?.points_earned && sale.points_earned > 0) {
-    addText(formatTwoColumnLine('Reward Poin:', `+${sale.points_earned} Poin`, maxChars));
+    addText(formatTwoColumnLine('Reward Poin:', `+${sale.points_earned.toLocaleString('id-ID')} Poin`, maxChars));
   }
 
   // 8. Footer Struk (Rata Tengah)

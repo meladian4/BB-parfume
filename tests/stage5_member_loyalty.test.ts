@@ -12,10 +12,17 @@ async function runStage5Tests() {
   // 1. VERIFIKASI KONFIGURASI LOYALTY & PENGATURAN SUPER ADMIN
   console.log('\n[TEST 1] Verifikasi & Pembaruan Konfigurasi Loyalty (App Settings)');
   const configAwal = await db.getLoyaltyConfig();
-  if (configAwal.spend_per_point !== 30000 || configAwal.point_value_idr !== 1500) {
-    throw new Error(`Test 1 Gagal: Nilai default konfigurasi loyalty tidak sesuai (diharapkan Rp 30.000 / Rp 1.500, didapat Rp ${configAwal.spend_per_point} / Rp ${configAwal.point_value_idr}).`);
+  if (
+    configAwal.spend_per_point !== 30000 ||
+    configAwal.points_per_step !== 1500 ||
+    configAwal.point_value_idr !== 1 ||
+    configAwal.min_redeem_points !== 1500
+  ) {
+    throw new Error(
+      `Test 1 Gagal: Nilai default konfigurasi loyalty tidak sesuai (diharapkan Rp 30.000 -> 1.500 Poin, 1 Poin = Rp 1, min 1.500; didapat spend=${configAwal.spend_per_point}, step=${configAwal.points_per_step}, val=${configAwal.point_value_idr}, min=${configAwal.min_redeem_points}).`
+    );
   }
-  console.log(`✓ Konfigurasi Awal: Belanja Rp ${configAwal.spend_per_point.toLocaleString('id-ID')} = 1 Poin | 1 Poin = Rp ${configAwal.point_value_idr.toLocaleString('id-ID')} diskon`);
+  console.log(`✓ Konfigurasi Awal: Belanja Rp ${configAwal.spend_per_point.toLocaleString('id-ID')} = ${configAwal.points_per_step.toLocaleString('id-ID')} Poin | 1 Poin = Rp ${configAwal.point_value_idr.toLocaleString('id-ID')} diskon`);
 
   // Super Admin mengubah konfigurasi loyalty
   const updatedConfig = await db.updateLoyaltyConfig({ min_redeem_points: 15 }, 'u-admin-01');
@@ -24,8 +31,8 @@ async function runStage5Tests() {
   }
   console.log(`✓ Konfigurasi Diperbarui: Minimal penukaran ${updatedConfig.min_redeem_points} Poin`);
 
-  // Kembalikan ke konfigurasi pengujian standar (spend 10.000, point_value 1.000, min 10 poin)
-  await db.updateLoyaltyConfig({ spend_per_point: 10000, point_value_idr: 1000, min_redeem_points: 10 });
+  // Kembalikan ke konfigurasi pengujian standar (spend 10.000, points_per_step 1, point_value 1.000, min 10 poin)
+  await db.updateLoyaltyConfig({ spend_per_point: 10000, points_per_step: 1, point_value_idr: 1000, min_redeem_points: 10 });
 
   // 2. REKONSILIASI SALDO AWAL MEMBER TERHADAP BUKU BESAR (LEDGER)
   console.log('\n[TEST 2] Rekonsiliasi Saldo Poin Awal Member vs Riwayat Buku Besar');
