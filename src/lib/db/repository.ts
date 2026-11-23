@@ -4539,11 +4539,19 @@ export const repository = {
         (s) => s.store_id === store.id && s.sale_status === 'COMPLETED'
       );
 
+      const toWibDateKey = (isoStr: string) => {
+        try {
+          return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(isoStr));
+        } catch {
+          return isoStr.slice(0, 10);
+        }
+      };
+
       if (options?.startDate) {
-        sales = sales.filter((s) => s.created_at.slice(0, 10) >= options.startDate!);
+        sales = sales.filter((s) => toWibDateKey(s.created_at) >= options.startDate!);
       }
       if (options?.endDate) {
-        sales = sales.filter((s) => s.created_at.slice(0, 10) <= options.endDate!);
+        sales = sales.filter((s) => toWibDateKey(s.created_at) <= options.endDate!);
       }
 
       sales.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

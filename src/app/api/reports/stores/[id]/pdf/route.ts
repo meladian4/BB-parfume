@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/repository';
-import { authenticateAndRequireRole, AuthorizationError } from '@/lib/auth/guards';
+import {
+  authenticateAndRequireRole,
+  validateStoreAccess,
+  AuthorizationError,
+  StoreAccessError,
+} from '@/lib/auth/guards';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
@@ -11,11 +16,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await authenticateAndRequireRole(['SUPER_ADMIN', 'CASHIER']);
+    const authUser = await authenticateAndRequireRole(['SUPER_ADMIN', 'CASHIER']);
     const storeId = params.id;
+    validateStoreAccess(authUser, storeId);
+
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate') || undefined;
     const endDate = searchParams.get('endDate') || undefined;
+    const sessionId = searchParams.get('sessionId') || undefined;
+    const forceDownload = searchParams.get('download') === '1';
 
     const summaries = await db.getStoreTransactionSummaries({
       storeId,
@@ -32,17 +41,50 @@ export async function GET(
     }
 
     const summary = summaries[0];
-    const periodLabel = startDate && endDate
-      ? `${startDate} s/d ${endDate}`
+
+    let shiftSummary: Record<string, any> | undefined;
+    if (sessionId) {
+      const storeSessions = await db.getCashSessions({ store_id: storeId });
+      const matched = storeSessions.find((s) => s.id === sessionId);
+      if (matched) {
+        shiftSummary = {
+          id: matched.id,
+          status: matched.status,
+          cashier_name: matched.cashier?.full_name || authUser.full_name || 'Kasir Cabang',
+          opened_at: matched.opened_at,
+          closed_at: matched.closed_at || null,
+          opening_cash: matched.opening_cash || 0,
+          total_sales_cash: matched.total_sales_cash || 0,
+          total_expenses: matched.total_expenses || 0,
+          total_deposits: matched.total_deposits || 0,
+          expected_cash: matched.expected_cash || 0,
+          actual_cash: matched.actual_cash ?? matched.closing_cash ?? 0,
+          difference: matched.difference ?? matched.cash_difference ?? 0,
+          notes: matched.notes || '',
+        };
+      }
+    }
+
+    const formatIdDate = (ymd: string) => {
+      const parts = ymd.split('-');
+      return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : ymd;
+    };
+
+    const isSingleDay = Boolean(startDate && endDate && startDate === endDate);
+    const periodLabel = isSingleDay
+      ? `Laporan Harian (${formatIdDate(startDate!)})`
+      : startDate && endDate
+      ? `${formatIdDate(startDate)} s/d ${formatIdDate(endDate)}`
       : startDate
-      ? `Mulai ${startDate}`
+      ? `Mulai ${formatIdDate(startDate)}`
       : endDate
-      ? `Sampai ${endDate}`
+      ? `Sampai ${formatIdDate(endDate)}`
       : 'Semua Riwayat Transaksi';
 
     const pdfPayload = {
       ...summary,
       period_label: periodLabel,
+      shift_summary: shiftSummary,
     };
 
     // Jalankan skrip Python ReportLab
@@ -72,17 +114,19 @@ export async function GET(
     const fileBuffer = fs.readFileSync(tempOutFile);
     fs.unlinkSync(tempOutFile);
 
-    const safeFilename = `Laporan_Transaksi_${summary.store_code || 'Toko'}_${Date.now()}.pdf`;
+    const safeFilename = isSingleDay
+      ? `Laporan_Harian_${summary.store_code || 'Toko'}_${startDate}.pdf`
+      : `Laporan_Transaksi_${summary.store_code || 'Toko'}_${Date.now()}.pdf`;
 
     return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="${safeFilename}"`,
+        'Content-Disposition': `${forceDownload ? 'attachment' : 'inline'}; filename="${safeFilename}"`,
       },
     });
   } catch (error: any) {
-    if (error instanceof AuthorizationError) {
+    if (error instanceof AuthorizationError || error instanceof StoreAccessError) {
       return NextResponse.json({ success: false, error: error.message }, { status: 403 });
     }
     return NextResponse.json(

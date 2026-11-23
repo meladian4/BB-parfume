@@ -45,7 +45,7 @@ export default function StoreDetailPage() {
       setError(null);
 
       const urlParams = new URLSearchParams();
-      const today = new Date().toISOString().slice(0, 10);
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
 
       if (period === 'TODAY') {
         urlParams.append('startDate', today);
@@ -85,11 +85,12 @@ export default function StoreDetailPage() {
     return matchInv || matchCashier || matchMember;
   });
 
+  const todayWib = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
   const pdfDownloadUrl = `/api/reports/stores/${storeId}/pdf${
     periodFilter === 'TODAY'
-      ? `?startDate=${new Date().toISOString().slice(0, 10)}&endDate=${new Date().toISOString().slice(0, 10)}`
+      ? `?startDate=${todayWib}&endDate=${todayWib}`
       : periodFilter === 'MONTH'
-      ? `?startDate=${new Date().toISOString().slice(0, 8)}01&endDate=${new Date().toISOString().slice(0, 10)}`
+      ? `?startDate=${todayWib.slice(0, 8)}01&endDate=${todayWib}`
       : ''
   }`;
 

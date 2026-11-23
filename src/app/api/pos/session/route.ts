@@ -17,7 +17,23 @@ export async function GET(request: NextRequest) {
     const session = await db.getCurrentCashSession(storeId, authUser.id);
     const availableCash = await db.getStoreAvailableCash(storeId);
     const lockStatus = await db.checkStorePosLockStatus(storeId);
-    return NextResponse.json({ session, available_cash: availableCash, lock_status: lockStatus });
+    const allStoreSessions = await db.getCashSessions({ store_id: storeId });
+    const recentClosedSessions = allStoreSessions
+      .filter((s) => s.status === 'CLOSED')
+      .sort(
+        (a, b) =>
+          new Date(b.closed_at || b.opened_at).getTime() -
+          new Date(a.closed_at || a.opened_at).getTime()
+      )
+      .slice(0, 8);
+
+    return NextResponse.json({
+      store_id: storeId,
+      session,
+      available_cash: availableCash,
+      lock_status: lockStatus,
+      recent_closed_sessions: recentClosedSessions,
+    });
   } catch (error: any) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message }, { status: 403 });

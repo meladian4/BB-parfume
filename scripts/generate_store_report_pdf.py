@@ -139,6 +139,8 @@ def build_pdf(data, output_path):
 
     # 1. HEADER
     now_wib = datetime.now(WIB).strftime("%d/%m/%Y %H:%M")
+    shift_info = data.get("shift_summary") or None
+    doc_badge = "LAPORAN HARIAN &amp; TUTUP SHIFT" if shift_info else "OUTPUT REPORT PDF TOKO"
     header_data = [
         [
             Paragraph(
@@ -147,7 +149,7 @@ def build_pdf(data, output_path):
                 style_title,
             ),
             Paragraph(
-                "<b>OUTPUT REPORT PDF TOKO</b><br/>"
+                f"<b>{doc_badge}</b><br/>"
                 f"<font size='7.5' color='#475569'>Dicetak: {now_wib} WIB</font>",
                 style_cell_right,
             ),
@@ -206,6 +208,74 @@ def build_pdf(data, output_path):
     )
     story.append(t_info)
     story.append(Spacer(1, 10))
+
+    # 2B. RINGKASAN REKONSILIASI TUTUP SHIFT (khusus jika dicetak dari Tutup Shift Kasir)
+    if shift_info:
+        sh_id = escape(str(shift_info.get("id") or "-"))
+        sh_cashier = escape(str(shift_info.get("cashier_name") or "Kasir Cabang"))
+        sh_open = format_wib(shift_info.get("opened_at"))
+        sh_close = format_wib(shift_info.get("closed_at"))
+        sh_opening = shift_info.get("opening_cash", 0)
+        sh_sales_cash = shift_info.get("total_sales_cash", 0)
+        sh_expenses = shift_info.get("total_expenses", 0)
+        sh_deposits = shift_info.get("total_deposits", 0)
+        sh_expected = shift_info.get("expected_cash", 0)
+        sh_actual = shift_info.get("actual_cash", 0)
+        sh_diff = shift_info.get("difference", 0)
+        sh_notes = escape(str(shift_info.get("notes") or "-"))
+
+        if sh_diff == 0:
+            diff_html = "<font color='#047857'><b>Rp 0 (Cocok)</b></font>"
+        elif sh_diff > 0:
+            diff_html = f"<font color='#0369A1'><b>+{format_idr(sh_diff)} (Lebih)</b></font>"
+        else:
+            diff_html = f"<font color='#B91C1C'><b>{format_idr(sh_diff)} (Kurang)</b></font>"
+
+        shift_rows = [
+            [
+                Paragraph("<b>REKONSILIASI TUTUP SHIFT KASIR</b>", style_th),
+                Paragraph(f"Sesi: {sh_id}", style_th_right),
+            ],
+            [
+                Paragraph(f"<b>Kasir Bertugas:</b> {sh_cashier}", style_cell),
+                Paragraph(f"<b>Buka / Tutup:</b> {sh_open} - {sh_close} WIB", style_cell),
+            ],
+            [
+                Paragraph(f"<b>Modal Kas Awal:</b> {format_idr(sh_opening)}", style_cell),
+                Paragraph(f"<b>Penjualan Tunai Shift:</b> {format_idr(sh_sales_cash)}", style_cell),
+            ],
+            [
+                Paragraph(f"<b>Setoran / Beban Shift:</b> {format_idr(sh_deposits)} / {format_idr(sh_expenses)}", style_cell),
+                Paragraph(f"<b>Saldo Kas Sistem (Expected):</b> <b>{format_idr(sh_expected)}</b>", style_cell),
+            ],
+            [
+                Paragraph(f"<b>Uang Fisik Laci (Aktual):</b> <font color='#0F172A'><b>{format_idr(sh_actual)}</b></font>", style_cell),
+                Paragraph(f"<b>Selisih Kas (Fisik - Sistem):</b> {diff_html}", style_cell),
+            ],
+            [
+                Paragraph(f"<b>Catatan Shift:</b> {sh_notes}", style_cell),
+                Paragraph("<b>Status Shift:</b> <font color='#047857'><b>CLOSED (TERTUTUP)</b></font>", style_cell),
+            ],
+        ]
+        t_shift = Table(shift_rows, colWidths=[9.1 * cm, 9.1 * cm])
+        t_shift.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), c_navy),
+                    ("BACKGROUND", (0, 1), (-1, -1), c_light),
+                    ("BOX", (0, 0), (-1, -1), 0.7, c_navy),
+                    ("INNERGRID", (0, 1), (-1, -1), 0.4, c_border),
+                    ("TOPPADDING", (0, 0), (-1, 0), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+                    ("TOPPADDING", (0, 1), (-1, -1), 4.5),
+                    ("BOTTOMPADDING", (0, 1), (-1, -1), 4.5),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ]
+            )
+        )
+        story.append(t_shift)
+        story.append(Spacer(1, 10))
 
     # 3. METRIC CARDS (2x2 Grid so large figures breathe cleanly & stay legible on phone PDF viewers)
     tot_sales = data.get("total_net_sales", 0)
@@ -433,11 +503,16 @@ def build_pdf(data, output_path):
     story.append(Spacer(1, 18))
 
     # 6. SIGNATURE BLOCK
+    cashier_sig_name = (
+        f"<b>{escape(str(shift_info.get('cashier_name')))}</b>"
+        if shift_info and shift_info.get("cashier_name")
+        else "( ......................................... )"
+    )
     sig_data = [
         [
             Paragraph(
                 "Petugas Kasir Cabang,<br/><br/><br/><br/>"
-                "( ......................................... )<br/>"
+                f"{cashier_sig_name}<br/>"
                 "<font size='7.5' color='#475569'>Kasir Shift Bertugas</font>",
                 style_cell_center,
             ),
