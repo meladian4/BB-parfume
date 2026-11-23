@@ -277,7 +277,7 @@ def build_pdf(data, output_path):
         story.append(t_shift)
         story.append(Spacer(1, 10))
 
-    # 3. METRIC CARDS (2x2 Grid so large figures breathe cleanly & stay legible on phone PDF viewers)
+    # 3. METRIC CARDS (2x3 Grid so large figures breathe cleanly & stay legible on phone PDF viewers)
     tot_sales = data.get("total_net_sales", 0)
     tot_trx = data.get("total_transactions", 0)
     cash_info = data.get("cash_summary", {})
@@ -287,6 +287,11 @@ def build_pdf(data, output_path):
     qris_amt = qris_info.get("amount", 0)
     qris_cnt = qris_info.get("count", 0)
     avail_cash = data.get("available_cash", 0)
+    expenses_list = data.get("expenses") or []
+    total_expenses = data.get("total_expenses")
+    if total_expenses is None:
+        total_expenses = sum(float(e.get("amount", 0) or 0) for e in expenses_list)
+    net_after_expenses = float(tot_sales or 0) - float(total_expenses or 0)
 
     cards_data = [
         [
@@ -308,6 +313,20 @@ def build_pdf(data, output_path):
                 f"<font size='7.5' color='#475569'><b>TRANSAKSI QRIS (NON-TUNAI)</b></font><br/>"
                 f"<b><font size='12' color='#0369A1'>{format_idr(qris_amt)}</font></b><br/>"
                 f"<font size='7.5' color='#475569'>{qris_cnt} Transaksi Digital</font>",
+                style_cell,
+            ),
+            Paragraph(
+                f"<font size='7.5' color='#475569'><b>PENGELUARAN HARIAN / OPERASIONAL</b></font><br/>"
+                f"<b><font size='12' color='#B91C1C'>{format_idr(total_expenses)}</font></b><br/>"
+                f"<font size='7.5' color='#475569'>{len(expenses_list)} Catatan Pengeluaran Cabang</font>",
+                style_cell,
+            ),
+        ],
+        [
+            Paragraph(
+                f"<font size='7.5' color='#475569'><b>OMSET BERSIH SETELAH PENGELUARAN</b></font><br/>"
+                f"<b><font size='12' color='#047857'>{format_idr(net_after_expenses)}</font></b><br/>"
+                f"<font size='7.5' color='#475569'>Total Omset dikurangi Pengeluaran</font>",
                 style_cell,
             ),
             Paragraph(
@@ -407,11 +426,108 @@ def build_pdf(data, output_path):
     story.append(t_cat)
     story.append(Spacer(1, 14))
 
+    # 4B. RINCIAN PENGELUARAN HARIAN / OPERASIONAL
+    story.append(
+        Paragraph(
+            f"<b>2. Pengeluaran Harian / Operasional Cabang ({len(expenses_list)} Catatan)</b>",
+            style_section,
+        )
+    )
+    story.append(Spacer(1, 5))
+
+    exp_cat_labels = {
+        "RENT": "Sewa Tempat",
+        "UTILITIES": "Listrik / Air / Internet",
+        "SALARY": "Gaji / Komisi",
+        "MARKETING": "Promosi / Marketing",
+        "MAINTENANCE": "Perawatan Toko",
+        "SUPPLIES": "Perlengkapan Toko",
+        "OTHER": "Operasional Lainnya",
+    }
+
+    exp_rows = [
+        [
+            Paragraph("Tanggal / Waktu", style_th),
+            Paragraph("Kategori", style_th),
+            Paragraph("Keterangan Pengeluaran", style_th),
+            Paragraph("Petugas", style_th),
+            Paragraph("Nominal (Rp)", style_th_right),
+        ]
+    ]
+
+    if not expenses_list:
+        exp_rows.append(
+            [
+                Paragraph("-", style_cell),
+                Paragraph("-", style_cell),
+                Paragraph("Tidak ada pengeluaran harian pada periode ini.", style_cell),
+                Paragraph("-", style_cell),
+                Paragraph("Rp 0", style_cell_right),
+            ]
+        )
+    else:
+        for exp in expenses_list[:100]:
+            exp_dt = format_wib(exp.get("created_at")) if exp.get("created_at") else escape(str(exp.get("expense_date") or "-"))
+            raw_cat = str(exp.get("category") or "OTHER").upper()
+            cat_lbl = escape(exp_cat_labels.get(raw_cat, raw_cat))
+            desc = escape(str(exp.get("description") or "-"))
+            pic = escape(
+                str(
+                    (exp.get("created_by_user") or {}).get("full_name")
+                    or exp.get("created_by")
+                    or "Kasir / Admin"
+                )
+            )
+            exp_amt = exp.get("amount", 0)
+            exp_rows.append(
+                [
+                    Paragraph(f"<font size='7.2'>{exp_dt}</font>", style_cell),
+                    Paragraph(f"<font size='7.2'><b>{cat_lbl}</b></font>", style_cell),
+                    Paragraph(f"<font size='7.2'>{desc}</font>", style_cell),
+                    Paragraph(f"<font size='7.2'>{pic}</font>", style_cell),
+                    Paragraph(f"<font size='7.5' color='#B91C1C'><b>{format_idr(exp_amt)}</b></font>", style_cell_right),
+                ]
+            )
+
+    exp_rows.append(
+        [
+            Paragraph("<b>TOTAL PENGELUARAN HARIAN</b>", style_cell_bold),
+            Paragraph("-", style_cell),
+            Paragraph(f"<b>{len(expenses_list)} Catatan Pengeluaran</b>", style_cell_bold),
+            Paragraph("-", style_cell),
+            Paragraph(f"<font color='#B91C1C'><b>{format_idr(total_expenses)}</b></font>", style_cell_right_bold),
+        ]
+    )
+
+    t_exp = Table(
+        exp_rows,
+        colWidths=[2.9 * cm, 3.0 * cm, 6.6 * cm, 2.9 * cm, 2.8 * cm],
+        repeatRows=1,
+    )
+    exp_style = [
+        ("BACKGROUND", (0, 0), (-1, 0), c_navy),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 4.5),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4.5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("GRID", (0, 0), (-1, -1), 0.4, c_border),
+        ("BACKGROUND", (0, -1), (-1, -1), c_zebra),
+    ]
+    for idx in range(1, len(exp_rows) - 1):
+        if idx % 2 == 0:
+            exp_style.append(("BACKGROUND", (0, idx), (-1, idx), c_light))
+    t_exp.setStyle(TableStyle(exp_style))
+    story.append(t_exp)
+    story.append(Spacer(1, 14))
+
     # 5. RINCIAN TRANSAKSI PENJUALAN
     sales_list = data.get("recent_sales", [])
     story.append(
         Paragraph(
-            f"<b>2. Rincian Riwayat Transaksi Toko ({len(sales_list)} Transaksi)</b>",
+            f"<b>3. Rincian Riwayat Transaksi Toko ({len(sales_list)} Transaksi)</b>",
             style_section,
         )
     )

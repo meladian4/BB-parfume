@@ -3830,11 +3830,21 @@ export const repository = {
     if (options?.category) {
       list = list.filter((e) => e.category === options.category);
     }
+    const toExpenseDateKey = (raw: string) => {
+      if (!raw) return '';
+      if (raw.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(raw));
+      } catch {
+        return raw.slice(0, 10);
+      }
+    };
+
     if (options?.startDate) {
-      list = list.filter((e) => e.expense_date >= options.startDate!);
+      list = list.filter((e) => toExpenseDateKey(e.expense_date || e.created_at) >= options.startDate!);
     }
     if (options?.endDate) {
-      list = list.filter((e) => e.expense_date <= options.endDate!);
+      list = list.filter((e) => toExpenseDateKey(e.expense_date || e.created_at) <= options.endDate!);
     }
 
     // Sort descending by date

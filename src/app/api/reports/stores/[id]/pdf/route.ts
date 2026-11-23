@@ -42,6 +42,13 @@ export async function GET(
 
     const summary = summaries[0];
 
+    const storeExpenses = await db.getExpenses({
+      store_id: storeId,
+      startDate,
+      endDate,
+    });
+    const totalExpenses = storeExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
     let shiftSummary: Record<string, any> | undefined;
     if (sessionId) {
       const storeSessions = await db.getCashSessions({ store_id: storeId });
@@ -85,6 +92,8 @@ export async function GET(
       ...summary,
       period_label: periodLabel,
       shift_summary: shiftSummary,
+      expenses: storeExpenses,
+      total_expenses: totalExpenses,
     };
 
     // Jalankan skrip Python ReportLab
