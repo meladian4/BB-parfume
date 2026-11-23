@@ -3187,6 +3187,8 @@ export const repository = {
       },
     });
 
+    globalState.saveToFile();
+
     return {
       ...newTx,
       member: { ...member },
@@ -3593,6 +3595,8 @@ export const repository = {
         points_redeemed: newSale.points_redeemed,
       },
     });
+
+    globalState.saveToFile();
 
     return (await this.getSaleById(saleId))!;
   },

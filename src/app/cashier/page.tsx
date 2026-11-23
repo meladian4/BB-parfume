@@ -154,8 +154,10 @@ export default function CashierPOSPage() {
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
   const [membersList, setMembersList] = useState<Member[]>([]);
+  const [newMemberCode, setNewMemberCode] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [newMemberRegisteredBy, setNewMemberRegisteredBy] = useState('');
 
   // State Modal Pembayaran
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
@@ -734,16 +736,21 @@ export default function CashierPOSPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          member_code: newMemberCode.trim() || null,
           name: newMemberName,
           phone: newMemberPhone,
+          registered_by: newMemberRegisteredBy.trim() || null,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSelectedMember(data.member);
       setIsMemberModalOpen(false);
+      setNewMemberCode('');
       setNewMemberName('');
       setNewMemberPhone('');
+      setNewMemberRegisteredBy('');
+      searchMembers(memberSearch);
     } catch (err: any) {
       alert(err.message || 'Gagal mendaftarkan member.');
     }
@@ -1830,10 +1837,22 @@ export default function CashierPOSPage() {
                   className="p-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-between cursor-pointer transition-colors"
                 >
                   <div>
-                    <p className="text-xs font-semibold text-white">{m.name}</p>
-                    <p className="text-[10px] text-slate-400">{m.phone} • Tier {m.tier}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold text-white">{m.name}</p>
+                      {m.member_code && (
+                        <span className="px-1.5 py-0.2 rounded bg-[#D4AF37]/15 text-[#E5C365] border border-[#D4AF37]/30 font-mono text-[9px] font-bold">
+                          {m.member_code}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      {m.phone} • Tier {m.tier}
+                      {m.registered_by ? ` • Petugas: ${m.registered_by}` : ''}
+                    </p>
                   </div>
-                  <span className="text-xs font-bold text-[#D4AF37]">{m.points_balance} Poin</span>
+                  <span className="text-xs font-bold text-[#D4AF37]">
+                    {(m.points_balance || 0).toLocaleString('id-ID')} Poin
+                  </span>
                 </div>
               ))}
               {membersList.length > 30 && (
@@ -1854,6 +1873,12 @@ export default function CashierPOSPage() {
             <form onSubmit={handleRegisterMember} className="space-y-2">
               <Input
                 type="text"
+                placeholder="ID Member / Kode Kartu (Opsional, misal: BB-001)"
+                value={newMemberCode}
+                onChange={(e) => setNewMemberCode(e.target.value)}
+              />
+              <Input
+                type="text"
                 placeholder="Nama Lengkap Pelanggan"
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
@@ -1866,8 +1891,31 @@ export default function CashierPOSPage() {
                 onChange={(e) => setNewMemberPhone(e.target.value)}
                 required
               />
+              {(() => {
+                const storeLabel =
+                  user?.assigned_store_id === 'a0000000-0000-0000-0000-000000000002'
+                    ? 'Kendal Kota'
+                    : user?.assigned_store_id === 'a0000000-0000-0000-0000-000000000003'
+                    ? 'Pegandon'
+                    : user?.assigned_store_id === 'a0000000-0000-0000-0000-000000000004'
+                    ? 'Kaliwungu'
+                    : store?.name || 'Cabang';
+                const emp1 = user?.employee_1_name?.trim() || `Karyawan 1 - ${storeLabel}`;
+                const emp2 = user?.employee_2_name?.trim() || `Karyawan 2 - ${storeLabel}`;
+                return (
+                  <select
+                    value={newMemberRegisteredBy}
+                    onChange={(e) => setNewMemberRegisteredBy(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#0F172A] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-[#D4AF37]"
+                  >
+                    <option value="">-- Pilih Karyawan Pendaftar (Opsional) --</option>
+                    <option value={emp1}>{emp1}</option>
+                    {emp2 !== emp1 && <option value={emp2}>{emp2}</option>}
+                  </select>
+                );
+              })()}
               <Button type="submit" variant="secondary" size="sm" className="w-full text-xs">
-                Simpan & Pasang Member ke Keranjang
+                Simpan &amp; Pasang Member ke Keranjang
               </Button>
             </form>
           </div>
