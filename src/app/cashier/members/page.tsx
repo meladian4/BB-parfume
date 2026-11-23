@@ -142,6 +142,20 @@ export default function CashierMembersPage() {
 
   const employeeOptions = branchEmployeeOptions;
 
+  const employeeEffortSummary = employeeOptions.map((empName, idx) => {
+    const count = members.filter((m) => (m.registered_by || '') === empName).length;
+    const colors = [
+      { dotClass: 'bg-amber-400', textClass: 'text-amber-400' },
+      { dotClass: 'bg-emerald-400', textClass: 'text-emerald-400' },
+      { dotClass: 'bg-purple-400', textClass: 'text-purple-400' },
+      { dotClass: 'bg-sky-400', textClass: 'text-sky-400' },
+    ];
+    const color = colors[idx % colors.length];
+    return { name: empName, count, ...color };
+  });
+
+  const unassignedCount = members.filter((m) => !m.registered_by).length;
+
   const filteredMembers = members.filter((m) => {
     if (employeeFilter !== 'ALL') {
       if (employeeFilter === 'UNASSIGNED') {
@@ -187,6 +201,90 @@ export default function CashierMembersPage() {
               <Plus className="w-4 h-4" />
               Daftar Pelanggan Baru
             </Button>
+          </div>
+
+          {/* Card Info Rangkuman Member & Kontribusi Karyawan Cabang */}
+          <div className="bg-[#0F172A] border border-[#1E293B] rounded-2xl p-3">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <UserCheck className="w-3 h-3 text-[#D4AF37]" />
+                Rangkuman Pendaftaran Member &amp; Kinerja Karyawan Cabang
+              </p>
+              {employeeFilter !== 'ALL' && (
+                <button
+                  type="button"
+                  onClick={() => setEmployeeFilter('ALL')}
+                  className="text-[10px] text-[#D4AF37] hover:underline font-medium"
+                >
+                  Tampilkan Semua Member
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Total Member */}
+              <button
+                type="button"
+                onClick={() => setEmployeeFilter('ALL')}
+                className={`text-left rounded-xl p-2 transition-all cursor-pointer ${
+                  employeeFilter === 'ALL'
+                    ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/60'
+                    : 'hover:bg-slate-800/40'
+                }`}
+              >
+                <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  <span>Total Semua Member</span>
+                </p>
+                <p className="text-sm font-bold text-slate-200 mt-0.5">
+                  {members.length} <span className="text-xs font-medium text-slate-400">member</span>
+                </p>
+              </button>
+
+              {/* 2 Karyawan Cabang */}
+              {employeeEffortSummary.map((emp) => {
+                const isSelected = employeeFilter === emp.name;
+                return (
+                  <button
+                    key={emp.name}
+                    type="button"
+                    onClick={() => setEmployeeFilter(isSelected ? 'ALL' : emp.name)}
+                    title={`Klik untuk filter member yang didaftarkan oleh ${emp.name}`}
+                    className={`text-left rounded-xl p-2 transition-all cursor-pointer sm:border-l sm:border-slate-800 sm:rounded-l-none sm:pl-3 ${
+                      isSelected
+                        ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/60'
+                        : 'hover:bg-slate-800/40'
+                    }`}
+                  >
+                    <p className="text-[10px] text-slate-400 flex items-center gap-1.5 truncate">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${emp.dotClass}`} />
+                      <span className="truncate">{emp.name}</span>
+                    </p>
+                    <p className={`text-sm font-bold mt-0.5 ${emp.textClass}`}>
+                      {emp.count} <span className="text-xs font-medium text-slate-400">member</span>
+                    </p>
+                  </button>
+                );
+              })}
+
+              {/* Tanpa Petugas */}
+              <button
+                type="button"
+                onClick={() => setEmployeeFilter(employeeFilter === 'UNASSIGNED' ? 'ALL' : 'UNASSIGNED')}
+                className={`text-left rounded-xl p-2 transition-all cursor-pointer sm:border-l sm:border-slate-800 sm:rounded-l-none sm:pl-3 ${
+                  employeeFilter === 'UNASSIGNED'
+                    ? 'bg-[#D4AF37]/10 ring-1 ring-[#D4AF37]/60'
+                    : 'hover:bg-slate-800/40'
+                }`}
+              >
+                <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                  <span>Tanpa Petugas</span>
+                </p>
+                <p className="text-sm font-bold text-purple-400 mt-0.5">
+                  {unassignedCount} <span className="text-xs font-medium text-slate-400">member</span>
+                </p>
+              </button>
+            </div>
           </div>
 
           {/* Search & Employee Filter Bar */}
