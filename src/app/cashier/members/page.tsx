@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateTimeJakarta } from '@/lib/formatters';
 import { Member, PointTransaction, UserProfile } from '@/types/domain';
-import { Users, Search, Plus, Phone, Mail, Award, History, CheckCircle2, UserCheck, CreditCard } from 'lucide-react';
+import { Users, Search, Plus, Phone, Mail, Award, History, CheckCircle2, UserCheck, CreditCard, Calendar, ArrowUpDown } from 'lucide-react';
 
 export default function CashierMembersPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -18,6 +18,8 @@ export default function CashierMembersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'POINTS_DESC'>('DATE_DESC');
 
   // State Modal Tambah Member
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -142,8 +144,13 @@ export default function CashierMembersPage() {
 
   const employeeOptions = branchEmployeeOptions;
 
+  const dateFilteredMembers = members.filter((m) => {
+    if (!dateFilter) return true;
+    return (m.created_at || '').slice(0, 10) === dateFilter;
+  });
+
   const employeeEffortSummary = employeeOptions.map((empName, idx) => {
-    const count = members.filter((m) => (m.registered_by || '') === empName).length;
+    const count = dateFilteredMembers.filter((m) => (m.registered_by || '') === empName).length;
     const colors = [
       { dotClass: 'bg-amber-400', textClass: 'text-amber-400' },
       { dotClass: 'bg-emerald-400', textClass: 'text-emerald-400' },
@@ -154,25 +161,34 @@ export default function CashierMembersPage() {
     return { name: empName, count, ...color };
   });
 
-  const unassignedCount = members.filter((m) => !m.registered_by).length;
+  const unassignedCount = dateFilteredMembers.filter((m) => !m.registered_by).length;
 
-  const filteredMembers = members.filter((m) => {
-    if (employeeFilter !== 'ALL') {
-      if (employeeFilter === 'UNASSIGNED') {
-        if (m.registered_by) return false;
-      } else if ((m.registered_by || '') !== employeeFilter) {
-        return false;
+  const filteredMembers = dateFilteredMembers
+    .filter((m) => {
+      if (employeeFilter !== 'ALL') {
+        if (employeeFilter === 'UNASSIGNED') {
+          if (m.registered_by) return false;
+        } else if ((m.registered_by || '') !== employeeFilter) {
+          return false;
+        }
       }
-    }
-    const q = search.toLowerCase();
-    return (
-      m.name.toLowerCase().includes(q) ||
-      m.phone.toLowerCase().includes(q) ||
-      (m.email && m.email.toLowerCase().includes(q)) ||
-      (m.member_code && m.member_code.toLowerCase().includes(q)) ||
-      (m.registered_by && m.registered_by.toLowerCase().includes(q))
-    );
-  });
+      const q = search.toLowerCase();
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.phone.toLowerCase().includes(q) ||
+        (m.email && m.email.toLowerCase().includes(q)) ||
+        (m.member_code && m.member_code.toLowerCase().includes(q)) ||
+        (m.registered_by && m.registered_by.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === 'POINTS_DESC') {
+        return (b.points_balance || 0) - (a.points_balance || 0);
+      }
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      return sortBy === 'DATE_ASC' ? timeA - timeB : timeB - timeA;
+    });
 
   return (
     <div className="min-h-screen bg-[#070A11] text-slate-100 flex flex-col font-sans">
@@ -236,7 +252,7 @@ export default function CashierMembersPage() {
                   <span>Total Semua Member</span>
                 </p>
                 <p className="text-sm font-bold text-slate-200 mt-0.5">
-                  {members.length} <span className="text-xs font-medium text-slate-400">member</span>
+                  {dateFilteredMembers.length} <span className="text-xs font-medium text-slate-400">member</span>
                 </p>
               </button>
 
@@ -302,7 +318,7 @@ export default function CashierMembersPage() {
 
             <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
               <UserCheck className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span className="text-slate-400">Petugas Pendaftar:</span>
+              <span className="text-slate-400">Petugas:</span>
               <select
                 value={employeeFilter}
                 onChange={(e) => setEmployeeFilter(e.target.value)}
@@ -315,6 +331,40 @@ export default function CashierMembersPage() {
                   </option>
                 ))}
                 <option value="UNASSIGNED" className="bg-[#0F172A]">Tanpa Petugas</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-slate-400">Tanggal:</span>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer [color-scheme:dark]"
+              />
+              {dateFilter && (
+                <button
+                  type="button"
+                  onClick={() => setDateFilter('')}
+                  className="text-[10px] text-rose-400 hover:underline ml-1"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-slate-400">Urutkan:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as 'DATE_DESC' | 'DATE_ASC' | 'POINTS_DESC')}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="DATE_DESC" className="bg-[#0F172A]">Terbaru Didaftarkan</option>
+                <option value="DATE_ASC" className="bg-[#0F172A]">Terlama Didaftarkan</option>
+                <option value="POINTS_DESC" className="bg-[#0F172A]">Saldo Poin Tertinggi</option>
               </select>
             </div>
           </div>
@@ -345,6 +395,9 @@ export default function CashierMembersPage() {
                             </span>
                           )}
                         </div>
+                        <p className="text-[10px] text-slate-500 mt-0.5">
+                          Terdaftar: {formatDateTimeJakarta(m.created_at)}
+                        </p>
                       </td>
                       <td className="py-3 px-4 text-slate-300">
                         <div className="flex items-center gap-1.5">

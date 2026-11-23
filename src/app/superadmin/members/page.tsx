@@ -24,6 +24,8 @@ import {
   Edit,
   Trash2,
   UserCheck,
+  Calendar,
+  ArrowUpDown,
 } from 'lucide-react';
 
 export default function SuperAdminMembersPage() {
@@ -33,6 +35,8 @@ export default function SuperAdminMembersPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [employeeFilter, setEmployeeFilter] = useState('ALL');
+  const [dateFilter, setDateFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'POINTS_DESC'>('DATE_DESC');
 
   // State Modal Tambah Member
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -286,28 +290,42 @@ export default function SuperAdminMembersPage() {
     ])
   );
 
+  const dateFilteredMembers = members.filter((m) => {
+    if (!dateFilter) return true;
+    return (m.created_at || '').slice(0, 10) === dateFilter;
+  });
+
   const employeeEffortSummary = employeeOptions.map((empName) => {
-    const count = members.filter((m) => (m.registered_by || '') === empName).length;
+    const count = dateFilteredMembers.filter((m) => (m.registered_by || '') === empName).length;
     return { name: empName, count };
   });
 
-  const filteredMembers = members.filter((m) => {
-    if (employeeFilter !== 'ALL') {
-      if (employeeFilter === 'UNASSIGNED') {
-        if (m.registered_by) return false;
-      } else if ((m.registered_by || '') !== employeeFilter) {
-        return false;
+  const filteredMembers = dateFilteredMembers
+    .filter((m) => {
+      if (employeeFilter !== 'ALL') {
+        if (employeeFilter === 'UNASSIGNED') {
+          if (m.registered_by) return false;
+        } else if ((m.registered_by || '') !== employeeFilter) {
+          return false;
+        }
       }
-    }
-    const q = search.toLowerCase();
-    return (
-      m.name.toLowerCase().includes(q) ||
-      m.phone.toLowerCase().includes(q) ||
-      (m.email && m.email.toLowerCase().includes(q)) ||
-      (m.member_code && m.member_code.toLowerCase().includes(q)) ||
-      (m.registered_by && m.registered_by.toLowerCase().includes(q))
-    );
-  });
+      const q = search.toLowerCase();
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.phone.toLowerCase().includes(q) ||
+        (m.email && m.email.toLowerCase().includes(q)) ||
+        (m.member_code && m.member_code.toLowerCase().includes(q)) ||
+        (m.registered_by && m.registered_by.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (sortBy === 'POINTS_DESC') {
+        return (b.points_balance || 0) - (a.points_balance || 0);
+      }
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      return sortBy === 'DATE_ASC' ? timeA - timeB : timeB - timeA;
+    });
 
   const totalPages = Math.ceil(filteredMembers.length / pageSize) || 1;
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -418,13 +436,56 @@ export default function SuperAdminMembersPage() {
                 }}
                 className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
               >
-                <option value="ALL" className="bg-[#0F172A]">Semua Karyawan ({members.length})</option>
+                <option value="ALL" className="bg-[#0F172A]">Semua Karyawan ({dateFilteredMembers.length})</option>
                 {employeeEffortSummary.map((emp) => (
                   <option key={emp.name} value={emp.name} className="bg-[#0F172A]">
                     {emp.name} ({emp.count} member)
                   </option>
                 ))}
                 <option value="UNASSIGNED" className="bg-[#0F172A]">Tanpa Petugas</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
+              <Calendar className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-slate-400">Tanggal:</span>
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => {
+                  setDateFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer [color-scheme:dark]"
+              />
+              {dateFilter && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateFilter('');
+                    setCurrentPage(1);
+                  }}
+                  className="text-[10px] text-rose-400 hover:underline ml-1"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 bg-[#0F172A] border border-[#1E293B] rounded-xl px-3 py-1.5 text-xs">
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-slate-400">Urutkan:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value as 'DATE_DESC' | 'DATE_ASC' | 'POINTS_DESC');
+                  setCurrentPage(1);
+                }}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer"
+              >
+                <option value="DATE_DESC" className="bg-[#0F172A]">Terbaru Didaftarkan</option>
+                <option value="DATE_ASC" className="bg-[#0F172A]">Terlama Didaftarkan</option>
+                <option value="POINTS_DESC" className="bg-[#0F172A]">Saldo Poin Tertinggi</option>
               </select>
             </div>
           </div>
@@ -459,7 +520,7 @@ export default function SuperAdminMembersPage() {
                             )}
                           </div>
                           <p className="text-[10px] text-slate-500 font-mono">
-                            {m.member_code ? `Kode: ${m.member_code}` : `ID: ${m.id.slice(0, 18)}...`}
+                            {m.member_code ? `Kode: ${m.member_code}` : `ID: ${m.id.slice(0, 18)}...`} • {formatDateTimeJakarta(m.created_at)}
                           </p>
                         </td>
                         <td className="py-3 px-4 text-slate-300">
