@@ -77,6 +77,7 @@ export function Sidebar({ role }: SidebarProps) {
     { href: '/cashier', label: 'Kasir POS Terminal', icon: Receipt },
     { href: '/cashier/deposits', label: 'Setor Kas ke Pusat', icon: Banknote },
     { href: '/cashier/transfers', label: 'Penerimaan Barang', icon: Truck },
+    { href: '/cashier/inventory', label: 'Manajemen Stok Toko', icon: Boxes },
     { href: '/cashier/expenses', label: 'Beban Operasional Cabang', icon: DollarSign },
     { href: '/cashier/session', label: 'Shift Kasir (Kas)', icon: Wallet },
     { href: '/cashier/history', label: 'Riwayat Transaksi', icon: ScrollText },
