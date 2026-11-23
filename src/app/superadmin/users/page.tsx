@@ -45,6 +45,8 @@ export default function UsersPage() {
   const [addFullName, setAddFullName] = useState('');
   const [addRole, setAddRole] = useState<UserRole>('CASHIER');
   const [addAssignedStoreId, setAddAssignedStoreId] = useState('');
+  const [addEmployee1Name, setAddEmployee1Name] = useState('');
+  const [addEmployee2Name, setAddEmployee2Name] = useState('');
   const [addError, setAddError] = useState('');
   const [submittingAdd, setSubmittingAdd] = useState(false);
 
@@ -58,6 +60,8 @@ export default function UsersPage() {
   const [editUnlockNow, setEditUnlockNow] = useState(false);
   const [editRole, setEditRole] = useState<UserRole>('CASHIER');
   const [editAssignedStoreId, setEditAssignedStoreId] = useState('');
+  const [editEmployee1Name, setEditEmployee1Name] = useState('');
+  const [editEmployee2Name, setEditEmployee2Name] = useState('');
   const [editIsActive, setEditIsActive] = useState(true);
   const [editError, setEditError] = useState('');
   const [submittingEdit, setSubmittingEdit] = useState(false);
@@ -117,6 +121,8 @@ export default function UsersPage() {
           full_name: addFullName.trim(),
           role: addRole,
           assigned_store_id: addRole === 'SUPER_ADMIN' ? null : addAssignedStoreId,
+          employee_1_name: addRole === 'CASHIER' ? addEmployee1Name.trim() || null : null,
+          employee_2_name: addRole === 'CASHIER' ? addEmployee2Name.trim() || null : null,
         }),
       });
 
@@ -142,6 +148,8 @@ export default function UsersPage() {
     setAddRole('CASHIER');
     const firstStore = stores.find((s) => s.type === 'STORE') || stores[0];
     setAddAssignedStoreId(firstStore ? firstStore.id : '');
+    setAddEmployee1Name('');
+    setAddEmployee2Name('');
     setAddError('');
   };
 
@@ -151,6 +159,8 @@ export default function UsersPage() {
     setEditEmail(u.email);
     setEditRole(u.role);
     setEditAssignedStoreId(u.assigned_store_id || '');
+    setEditEmployee1Name(u.employee_1_name || '');
+    setEditEmployee2Name(u.employee_2_name || '');
     setEditIsActive(u.is_active);
     setEditPassword('');
     setShowEditPassword(false);
@@ -176,6 +186,8 @@ export default function UsersPage() {
         email: editEmail.trim().toLowerCase(),
         role: editRole,
         assigned_store_id: editRole === 'SUPER_ADMIN' ? null : editAssignedStoreId,
+        employee_1_name: editRole === 'CASHIER' ? editEmployee1Name.trim() || null : null,
+        employee_2_name: editRole === 'CASHIER' ? editEmployee2Name.trim() || null : null,
         is_active: editIsActive,
       };
 
@@ -725,12 +737,31 @@ export default function UsersPage() {
                   ))}
               </select>
               {addRole === 'CASHIER' && (
-                <div className="p-2.5 rounded bg-amber-950/40 border border-amber-800/40 text-[11px] text-amber-300 space-y-0.5">
-                  <p className="font-semibold flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                    Larangan Akses Ketat Kasir:
+                <div className="space-y-3 pt-2 border-t border-slate-800">
+                  <p className="text-xs font-semibold text-[#E5C365]">
+                    2 Nama Karyawan Cabang (1 Akun Kasir Digunakan 2 Karyawan):
                   </p>
-                  <p>Kasir hanya dapat membuka kasir POS di toko ini dan dilarang mengakses Gudang Pusat atau cabang lain.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <Input
+                      label="Nama Karyawan 1 (Shift/Opsi 1)"
+                      placeholder="Contoh: Siti - Kendal Kota"
+                      value={addEmployee1Name}
+                      onChange={(e) => setAddEmployee1Name(e.target.value)}
+                    />
+                    <Input
+                      label="Nama Karyawan 2 (Shift/Opsi 2)"
+                      placeholder="Contoh: Rina - Kendal Kota"
+                      value={addEmployee2Name}
+                      onChange={(e) => setAddEmployee2Name(e.target.value)}
+                    />
+                  </div>
+                  <div className="p-2.5 rounded bg-amber-950/40 border border-amber-800/40 text-[11px] text-amber-300 space-y-0.5">
+                    <p className="font-semibold flex items-center gap-1">
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                      Larangan Akses Ketat Kasir:
+                    </p>
+                    <p>Kasir hanya dapat membuka kasir POS di toko ini. Kedua nama karyawan di atas akan muncul sebagai 2 pilihan petugas saat mendaftarkan member baru.</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -866,15 +897,34 @@ export default function UsersPage() {
                       </option>
                     ))}
                 </select>
-                {editRole === 'CASHIER' && (
-                  <div className="p-2.5 rounded bg-amber-950/40 border border-amber-800/40 text-[11px] text-amber-300 space-y-0.5">
-                    <p className="font-semibold flex items-center gap-1">
-                      <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                      Larangan Akses Ketat Kasir:
-                    </p>
-                    <p>Akun ini hanya dapat membuka kasir di toko cabang terpilih. Dilarang bertransaksi di cabang lain atau di Gudang Pusat.</p>
-                  </div>
-                )}
+                  {editRole === 'CASHIER' && (
+                    <div className="space-y-3 pt-2 border-t border-slate-800">
+                      <p className="text-xs font-semibold text-[#E5C365]">
+                        2 Nama Karyawan Cabang (1 Akun Kasir Digunakan 2 Karyawan):
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <Input
+                          label="Nama Karyawan 1 (Shift/Opsi 1)"
+                          placeholder="Contoh: Siti - Kendal Kota"
+                          value={editEmployee1Name}
+                          onChange={(e) => setEditEmployee1Name(e.target.value)}
+                        />
+                        <Input
+                          label="Nama Karyawan 2 (Shift/Opsi 2)"
+                          placeholder="Contoh: Rina - Kendal Kota"
+                          value={editEmployee2Name}
+                          onChange={(e) => setEditEmployee2Name(e.target.value)}
+                        />
+                      </div>
+                      <div className="p-2.5 rounded bg-amber-950/40 border border-amber-800/40 text-[11px] text-amber-300 space-y-0.5">
+                        <p className="font-semibold flex items-center gap-1">
+                          <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                          Larangan Akses Ketat Kasir:
+                        </p>
+                        <p>Akun ini hanya dapat membuka kasir di toko cabang terpilih. Kedua nama karyawan di atas akan muncul sebagai 2 pilihan petugas saat mendaftarkan member baru.</p>
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
 

@@ -262,9 +262,26 @@ export default function SuperAdminMembersPage() {
     }
   };
 
+  // Hanya tampilkan 2 opsi karyawan untuk masing-masing akun CASHIER cabang (tanpa Super Admin & tanpa Logistik)
   const employeeOptions = Array.from(
     new Set([
-      ...employees.map((e) => e.full_name).filter(Boolean),
+      ...employees
+        .filter((e) => e.role === 'CASHIER')
+        .flatMap((c) => {
+          const storeLabel =
+            c.assigned_store_id === 'a0000000-0000-0000-0000-000000000002'
+              ? 'Kendal Kota'
+              : c.assigned_store_id === 'a0000000-0000-0000-0000-000000000003'
+              ? 'Pegandon'
+              : c.assigned_store_id === 'a0000000-0000-0000-0000-000000000004'
+              ? 'Kaliwungu'
+              : c.full_name || 'Cabang';
+          return [
+            c.employee_1_name?.trim() || `Karyawan 1 - ${storeLabel}`,
+            c.employee_2_name?.trim() || `Karyawan 2 - ${storeLabel}`,
+          ];
+        })
+        .filter(Boolean),
       ...members.map((m) => m.registered_by || '').filter(Boolean),
     ])
   );

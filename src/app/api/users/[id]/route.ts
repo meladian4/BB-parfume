@@ -29,7 +29,7 @@ export async function PUT(
   try {
     await authenticateAndRequireRole(['SUPER_ADMIN']);
     const body = await request.json();
-    const { full_name, email, role, assigned_store_id, is_active, password, is_locked } = body;
+    const { full_name, email, role, assigned_store_id, is_active, password, is_locked, employee_1_name, employee_2_name } = body;
 
     if (!full_name || !email || !role) {
       return NextResponse.json(
@@ -68,6 +68,18 @@ export async function PUT(
       email: email.trim().toLowerCase(),
       role: role as UserRole,
       assigned_store_id: role === 'SUPER_ADMIN' ? null : assigned_store_id || null,
+      employee_1_name:
+        role === 'CASHIER'
+          ? employee_1_name !== undefined
+            ? employee_1_name?.trim() || null
+            : undefined
+          : null,
+      employee_2_name:
+        role === 'CASHIER'
+          ? employee_2_name !== undefined
+            ? employee_2_name?.trim() || null
+            : undefined
+          : null,
       is_active: is_active !== undefined ? is_active : true,
       is_locked: is_locked !== undefined ? is_locked : undefined,
       password: password && password.trim() ? password.trim() : undefined,

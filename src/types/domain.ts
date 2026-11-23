@@ -25,6 +25,8 @@ export interface UserProfile {
   full_name: string;
   role: UserRole;
   assigned_store_id?: string | null;
+  employee_1_name?: string | null;
+  employee_2_name?: string | null;
   is_active: boolean;
   is_locked?: boolean;
   failed_login_attempts?: number;

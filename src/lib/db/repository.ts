@@ -273,6 +273,8 @@ const INITIAL_PROFILES: UserProfile[] = [
     full_name: 'Kasir Toko Kendal Kota',
     role: 'CASHIER',
     assigned_store_id: 'a0000000-0000-0000-0000-000000000002', // Toko Kendal Kota
+    employee_1_name: 'Karyawan 1 - Kendal Kota',
+    employee_2_name: 'Karyawan 2 - Kendal Kota',
     is_active: true,
     is_locked: false,
     failed_login_attempts: 0,
@@ -286,6 +288,8 @@ const INITIAL_PROFILES: UserProfile[] = [
     full_name: 'Kasir Toko Pegandon',
     role: 'CASHIER',
     assigned_store_id: 'a0000000-0000-0000-0000-000000000003', // Toko Pegandon
+    employee_1_name: 'Karyawan 1 - Pegandon',
+    employee_2_name: 'Karyawan 2 - Pegandon',
     is_active: true,
     is_locked: false,
     failed_login_attempts: 0,
@@ -299,6 +303,8 @@ const INITIAL_PROFILES: UserProfile[] = [
     full_name: 'Kasir Toko Kaliwungu',
     role: 'CASHIER',
     assigned_store_id: 'a0000000-0000-0000-0000-000000000004', // Toko Kaliwungu
+    employee_1_name: 'Karyawan 1 - Kaliwungu',
+    employee_2_name: 'Karyawan 2 - Kaliwungu',
     is_active: true,
     is_locked: false,
     failed_login_attempts: 0,
@@ -710,12 +716,30 @@ class MemoryDatabaseState {
           this.companyWalletTransactions = parsed.companyWalletTransactions;
         }
         if (Array.isArray(parsed.profiles) && parsed.profiles.length > 0) {
-          this.profiles = parsed.profiles.map((p: any) => ({
-            ...p,
-            is_locked: p.is_locked ?? false,
-            failed_login_attempts: p.failed_login_attempts ?? 0,
-            locked_at: p.locked_at ?? null,
-          }));
+          this.profiles = parsed.profiles.map((p: any) => {
+            let emp1 = p.employee_1_name;
+            let emp2 = p.employee_2_name;
+            if (p.role === 'CASHIER' && !emp1 && !emp2) {
+              const label =
+                p.assigned_store_id === 'a0000000-0000-0000-0000-000000000002'
+                  ? 'Kendal Kota'
+                  : p.assigned_store_id === 'a0000000-0000-0000-0000-000000000003'
+                  ? 'Pegandon'
+                  : p.assigned_store_id === 'a0000000-0000-0000-0000-000000000004'
+                  ? 'Kaliwungu'
+                  : p.full_name || 'Cabang';
+              emp1 = `Karyawan 1 - ${label}`;
+              emp2 = `Karyawan 2 - ${label}`;
+            }
+            return {
+              ...p,
+              employee_1_name: emp1 ?? null,
+              employee_2_name: emp2 ?? null,
+              is_locked: p.is_locked ?? false,
+              failed_login_attempts: p.failed_login_attempts ?? 0,
+              locked_at: p.locked_at ?? null,
+            };
+          });
         }
         if (parsed.loyaltyConfig && typeof parsed.loyaltyConfig === 'object') {
           const isLegacyDefault =

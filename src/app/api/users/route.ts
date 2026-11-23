@@ -15,7 +15,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, email, full_name, role, assigned_store_id } = body;
+    const { id, email, full_name, role, assigned_store_id, employee_1_name, employee_2_name } = body;
 
     if (!email || !full_name || !role) {
       return NextResponse.json(
@@ -56,6 +56,8 @@ export async function POST(request: Request) {
       full_name: full_name.trim(),
       role: role as UserRole,
       assigned_store_id: role === 'SUPER_ADMIN' ? null : assigned_store_id,
+      employee_1_name: role === 'CASHIER' ? employee_1_name?.trim() || null : null,
+      employee_2_name: role === 'CASHIER' ? employee_2_name?.trim() || null : null,
       is_active: true,
     });
 

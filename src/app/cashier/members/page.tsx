@@ -105,12 +105,42 @@ export default function CashierMembersPage() {
     }
   };
 
-  const employeeOptions = Array.from(
-    new Set([
-      ...employees.map((e) => e.full_name).filter(Boolean),
-      ...members.map((m) => m.registered_by || '').filter(Boolean),
-    ])
-  );
+  // Khusus cabang kasir: 1 akun kasir digunakan 2 orang karyawan (hanya tampilkan 2 opsi karyawan untuk akun kasir cabang ini)
+  const branchEmployeeOptions = (() => {
+    if (user?.role === 'CASHIER') {
+      const myProfile = employees.find((e) => e.id === user.id) || user;
+      const storeLabel =
+        myProfile.assigned_store_id === 'a0000000-0000-0000-0000-000000000002'
+          ? 'Kendal Kota'
+          : myProfile.assigned_store_id === 'a0000000-0000-0000-0000-000000000003'
+          ? 'Pegandon'
+          : myProfile.assigned_store_id === 'a0000000-0000-0000-0000-000000000004'
+          ? 'Kaliwungu'
+          : myProfile.full_name || 'Cabang';
+      const opt1 = myProfile.employee_1_name?.trim() || `Karyawan 1 - ${storeLabel}`;
+      const opt2 = myProfile.employee_2_name?.trim() || `Karyawan 2 - ${storeLabel}`;
+      return Array.from(new Set([opt1, opt2].filter(Boolean)));
+    }
+    // Jika dibuka oleh Super Admin, tampilkan 2 opsi karyawan dari seluruh akun kasir cabang
+    const allBranchStaff: string[] = [];
+    employees
+      .filter((e) => e.role === 'CASHIER')
+      .forEach((c) => {
+        const storeLabel =
+          c.assigned_store_id === 'a0000000-0000-0000-0000-000000000002'
+            ? 'Kendal Kota'
+            : c.assigned_store_id === 'a0000000-0000-0000-0000-000000000003'
+            ? 'Pegandon'
+            : c.assigned_store_id === 'a0000000-0000-0000-0000-000000000004'
+            ? 'Kaliwungu'
+            : c.full_name || 'Cabang';
+        allBranchStaff.push(c.employee_1_name?.trim() || `Karyawan 1 - ${storeLabel}`);
+        allBranchStaff.push(c.employee_2_name?.trim() || `Karyawan 2 - ${storeLabel}`);
+      });
+    return Array.from(new Set(allBranchStaff.filter(Boolean)));
+  })();
+
+  const employeeOptions = branchEmployeeOptions;
 
   const filteredMembers = members.filter((m) => {
     if (employeeFilter !== 'ALL') {
