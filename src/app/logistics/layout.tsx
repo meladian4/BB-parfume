@@ -44,12 +44,14 @@ export default function LogisticsLayout({
 
   return (
     <RoleGuard allowedRoles={['LOGISTICS', 'SUPER_ADMIN']}>
-      <div className="min-h-screen bg-[#090D16] flex flex-col">
+      <div className="h-screen overflow-hidden bg-[#090D16] flex flex-col">
         <Topbar currentUser={currentUser} />
-        <div className="flex flex-1 min-w-0">
+        <div className="flex flex-1 min-h-0 min-w-0 overflow-hidden">
           <Sidebar role={currentUser.role === 'SUPER_ADMIN' ? 'LOGISTICS' : currentUser.role} />
-          <main className="flex-1 p-3 sm:p-5 md:p-8 max-w-7xl mx-auto w-full min-w-0 overflow-y-auto">
-            {children}
+          <main className="flex-1 p-3 sm:p-5 md:p-8 w-full min-w-0 overflow-y-auto">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
           </main>
         </div>
       </div>

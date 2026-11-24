@@ -82,7 +82,6 @@ export function Sidebar({ role }: SidebarProps) {
     { href: '/cashier/session', label: 'Shift Kasir (Kas)', icon: Wallet },
     { href: '/cashier/history', label: 'Riwayat Transaksi', icon: ScrollText },
     { href: '/cashier/members', label: 'Member & Loyalty', icon: Users },
-    { href: '/cashier/returns', label: 'Retur Penjualan', icon: RotateCcw },
   ];
 
   const links =
@@ -185,7 +184,7 @@ export function Sidebar({ role }: SidebarProps) {
       {/* 1. DESKTOP SIDEBAR (Tampil di md ke atas) */}
       <aside
         className={clsx(
-          'border-r border-[#1E293B] bg-[#090D16] flex-col justify-between shrink-0 h-[calc(100vh-4rem)] sticky top-16 transition-all duration-300 hidden md:flex',
+          'border-r border-[#1E293B] bg-[#090D16] flex-col justify-between shrink-0 h-full transition-all duration-300 hidden md:flex',
           isDesktopCollapsed ? 'w-16' : 'w-64'
         )}
       >

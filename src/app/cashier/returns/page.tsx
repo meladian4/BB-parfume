@@ -79,12 +79,8 @@ export default function CashierReturnsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A11] text-slate-100 flex flex-col font-sans">
-      <Topbar user={user || undefined} />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar role="CASHIER" />
-
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-2">

@@ -844,12 +844,8 @@ export default function CashierPOSPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A11] text-slate-100 flex flex-col font-sans">
-      <Topbar user={user || undefined} />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar role={user?.role || 'CASHIER'} />
-
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <main className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-[#090D16] to-[#04060A]">
           {/* POS LOCK STATUS NOTIFICATION BANNER */}
           {posLockStatus?.is_locked && (

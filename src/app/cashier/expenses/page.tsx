@@ -306,12 +306,8 @@ export default function CashierExpensesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070A0F] text-slate-100 flex flex-col">
-      <Topbar user={user || undefined} />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar role={user?.role || 'CASHIER'} />
-
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <main className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

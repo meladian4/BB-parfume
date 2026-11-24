@@ -199,12 +199,8 @@ export default function CashierSessionPage() {
   const activeStoreId = storeId || session?.store_id || user?.assigned_store_id || null;
 
   return (
-    <div className="min-h-screen bg-[#070A11] text-slate-100 flex flex-col font-sans">
-      <Topbar user={user || undefined} />
-
-      <div className="flex-1 flex overflow-hidden">
-        <Sidebar role="CASHIER" />
-
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <main className="flex-1 flex flex-col overflow-y-auto p-4 sm:p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
