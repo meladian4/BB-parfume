@@ -474,6 +474,13 @@ class MemoryDatabaseState {
   // Company Master Wallet Ledger
   companyWalletTransactions: CompanyWalletTransaction[] = [];
 
+  // Async Non-Blocking Persistence Queue
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  private isWritingFile: boolean = false;
+  private pendingSave: boolean = false;
+  private hasDirtyState: boolean = false;
+  private shutdownHookRegistered: boolean = false;
+
   constructor(withInitialStock: boolean = false, withInitialProducts: boolean = false) {
     this.products = withInitialProducts ? [...INITIAL_PRODUCTS] : [];
     this.initInventory(withInitialStock);
@@ -636,11 +643,101 @@ class MemoryDatabaseState {
     this.saveToFile();
   }
 
-  saveToFile() {
-    if (this.isTestMode) return;
-    if (typeof window !== 'undefined') return;
-    if (process.env.NODE_ENV === 'test' || process.env.IS_ACCEPTANCE_TEST === 'true') return;
-    if (typeof process !== 'undefined' && process.argv && process.argv.some((a) => a.includes('tests/'))) return;
+  private shouldSkipPersistence(): boolean {
+    if (this.isTestMode) return true;
+    if (typeof window !== 'undefined') return true;
+    if (process.env.NODE_ENV === 'test' || process.env.IS_ACCEPTANCE_TEST === 'true') return true;
+    if (typeof process !== 'undefined' && process.argv && process.argv.some((a) => a.includes('tests/'))) return true;
+    return false;
+  }
+
+  private buildSnapshotPayload(): string {
+    const snapshot = {
+      products: this.products,
+      categories: this.categories,
+      stores: this.stores,
+      inventoryBalances: this.inventoryBalances,
+      stockTransfers: this.stockTransfers,
+      stockTransferItems: this.stockTransferItems,
+      stockMovements: this.stockMovements,
+      purchases: this.purchases,
+      purchaseItems: this.purchaseItems,
+      sales: this.sales,
+      saleItems: this.saleItems,
+      payments: this.payments,
+      expenses: this.expenses,
+      members: this.members,
+      pointTransactions: this.pointTransactions,
+      auditLogs: this.auditLogs,
+      profiles: this.profiles,
+      cashSessions: this.cashSessions,
+      cashDeposits: this.cashDeposits,
+      loyaltyConfig: this.loyaltyConfig,
+      companyWalletTransactions: this.companyWalletTransactions,
+      passwords: Object.fromEntries(this.passwords.entries()),
+    };
+    // Minified JSON (no indentation) — cuts disk size ~50-60% and speeds up serialization
+    return JSON.stringify(snapshot);
+  }
+
+  private registerShutdownHooks() {
+    if (this.shutdownHookRegistered || typeof process === 'undefined' || !process.on) return;
+    this.shutdownHookRegistered = true;
+    const handleExit = () => {
+      if (this.hasDirtyState) {
+        this.flushToFileSync();
+      }
+    };
+    process.once('beforeExit', handleExit);
+    process.once('SIGINT', () => {
+      handleExit();
+      process.exit(0);
+    });
+    process.once('SIGTERM', () => {
+      handleExit();
+      process.exit(0);
+    });
+  }
+
+  private async flushToFileAsync() {
+    if (this.shouldSkipPersistence()) return;
+    if (this.isWritingFile) {
+      this.pendingSave = true;
+      return;
+    }
+    this.isWritingFile = true;
+    this.hasDirtyState = false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const fs = require('fs');
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const path = require('path');
+      const dataDir = path.join(process.cwd(), '.data');
+      await fs.promises.mkdir(dataDir, { recursive: true });
+      const filePath = path.join(dataDir, 'bb_state.json');
+      const tmpPath = path.join(dataDir, `bb_state.json.tmp.${Date.now()}`);
+      const payload = this.buildSnapshotPayload();
+      // Non-blocking atomic write: write to temp file, then rename
+      await fs.promises.writeFile(tmpPath, payload, 'utf-8');
+      await fs.promises.rename(tmpPath, filePath);
+    } catch {
+      // ignore
+    } finally {
+      this.isWritingFile = false;
+      if (this.pendingSave) {
+        this.pendingSave = false;
+        void this.flushToFileAsync();
+      }
+    }
+  }
+
+  flushToFileSync() {
+    if (this.shouldSkipPersistence()) return;
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    this.hasDirtyState = false;
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const fs = require('fs');
@@ -651,33 +748,28 @@ class MemoryDatabaseState {
         fs.mkdirSync(dataDir, { recursive: true });
       }
       const filePath = path.join(dataDir, 'bb_state.json');
-      const snapshot = {
-        products: this.products,
-        categories: this.categories,
-        stores: this.stores,
-        inventoryBalances: this.inventoryBalances,
-        stockTransfers: this.stockTransfers,
-        stockTransferItems: this.stockTransferItems,
-        stockMovements: this.stockMovements,
-        purchases: this.purchases,
-        purchaseItems: this.purchaseItems,
-        sales: this.sales,
-        saleItems: this.saleItems,
-        payments: this.payments,
-        expenses: this.expenses,
-        members: this.members,
-        pointTransactions: this.pointTransactions,
-        auditLogs: this.auditLogs,
-        profiles: this.profiles,
-        cashSessions: this.cashSessions,
-        cashDeposits: this.cashDeposits,
-        loyaltyConfig: this.loyaltyConfig,
-        companyWalletTransactions: this.companyWalletTransactions,
-        passwords: Object.fromEntries(this.passwords.entries()),
-      };
-      fs.writeFileSync(filePath, JSON.stringify(snapshot, null, 2), 'utf-8');
+      const tmpPath = path.join(dataDir, `bb_state.json.tmp.${Date.now()}`);
+      fs.writeFileSync(tmpPath, this.buildSnapshotPayload(), 'utf-8');
+      fs.renameSync(tmpPath, filePath);
     } catch {
       // ignore
+    }
+  }
+
+  saveToFile() {
+    if (this.shouldSkipPersistence()) return;
+    this.registerShutdownHooks();
+    this.hasDirtyState = true;
+    // Debounce rapid consecutive mutations (e.g. checkout + stock + points) into 1 background write
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+    }
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      void this.flushToFileAsync();
+    }, 300);
+    if (typeof (this.saveTimer as any).unref === 'function') {
+      (this.saveTimer as any).unref();
     }
   }
 
