@@ -91,14 +91,14 @@ export function Topbar({
     return () => clearInterval(timer);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (onLogout) {
       onLogout();
       return;
     }
     try {
+      await fetch('/api/auth/logout', { method: 'POST' });
       localStorage.removeItem('bb_current_user');
-      document.cookie = 'bb_user_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     } catch {
       // ignore
     }

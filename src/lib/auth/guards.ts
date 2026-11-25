@@ -95,25 +95,47 @@ export function resolveEffectiveStoreId(user: UserProfile, requestedStoreId?: st
 
 /**
  * Mendapatkan user aktif (sesi kasir / logistik / admin)
+ * Pada HTTP request nyata: WAJIB memiliki cookie sesi bertanda tangan (HMAC-SHA256) yang valid.
+ * Fallback hanya diizinkan saat berjalan di CLI acceptance test (tanpa Next.js request context).
  */
 export async function getSessionUser(roleHint: UserRole = 'CASHIER'): Promise<UserProfile> {
   const { repository } = await import('@/lib/db/repository');
+  const { verifySessionToken } = await import('@/lib/auth/crypto');
+
+  let cookieStore: Awaited<ReturnType<(typeof import('next/headers'))['cookies']>> | null = null;
   try {
     const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('bb_user_session')?.value;
-    if (sessionCookie) {
-      const session = JSON.parse(sessionCookie);
-      const targetUserId = session.userId || session.id;
-      if (targetUserId) {
-        const user = await repository.getUserProfileById(targetUserId);
-        if (user && user.is_active) {
-          return user;
-        }
-      }
-    }
+    cookieStore = await cookies();
   } catch {
-    // ignore in environments without cookieStore (e.g. tests or scripts)
+    // Berjalan di luar Next.js HTTP request context (misal CLI test scripts)
+    cookieStore = null;
+  }
+
+  if (cookieStore) {
+    const rawCookie = cookieStore.get('bb_user_session')?.value;
+    const verified = verifySessionToken(rawCookie);
+    if (!verified) {
+      throw new AuthorizationError('Sesi tidak valid atau telah berakhir. Silakan login kembali.');
+    }
+
+    const user = await repository.getUserProfileById(verified.userId || verified.id);
+    if (!user || !user.is_active) {
+      throw new AuthorizationError('Sesi tidak valid atau akun dinonaktifkan.');
+    }
+    if (user.role !== 'SUPER_ADMIN' && user.is_locked) {
+      throw new AuthorizationError('Akses ditolak: Akun Anda sedang terkunci. Hubungi Super Admin.');
+    }
+    return user;
+  }
+
+  // Hanya untuk skrip test CLI (bukan HTTP request)
+  const isTestContext =
+    process.env.NODE_ENV === 'test' ||
+    process.env.IS_ACCEPTANCE_TEST === 'true' ||
+    (typeof process !== 'undefined' && process.argv?.some((a) => a.includes('tests/')));
+
+  if (!isTestContext) {
+    throw new AuthorizationError('Sesi tidak ditemukan. Silakan login terlebih dahulu.');
   }
 
   const users = await repository.getUserProfiles();

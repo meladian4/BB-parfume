@@ -3,6 +3,7 @@
 // BB Parfum Premium Management System
 // ============================================================================
 
+import { hashPassword, isPasswordHashed, verifyPassword } from '@/lib/auth/crypto';
 import {
   Store,
   UserProfile,
@@ -680,7 +681,12 @@ class MemoryDatabaseState {
       cashDeposits: this.cashDeposits,
       loyaltyConfig: this.loyaltyConfig,
       companyWalletTransactions: this.companyWalletTransactions,
-      passwords: Object.fromEntries(this.passwords.entries()),
+      passwords: Object.fromEntries(
+        Array.from(this.passwords.entries()).map(([k, v]) => [
+          k,
+          isPasswordHashed(v) ? v : hashPassword(v),
+        ])
+      ),
     };
     // Minified JSON (no indentation) — cuts disk size ~50-60% and speeds up serialization
     return JSON.stringify(snapshot);
@@ -864,10 +870,19 @@ class MemoryDatabaseState {
           }
         }
         if (parsed.passwords && typeof parsed.passwords === 'object') {
+          let migratedPlain = false;
           for (const [k, v] of Object.entries(parsed.passwords)) {
             if (typeof v === 'string') {
-              this.passwords.set(k, v);
+              if (isPasswordHashed(v)) {
+                this.passwords.set(k, v);
+              } else {
+                this.passwords.set(k, hashPassword(v));
+                migratedPlain = true;
+              }
             }
+          }
+          if (migratedPlain) {
+            this.saveToFile();
           }
         }
       }
@@ -1076,7 +1091,7 @@ export const repository = {
 
     // Jika password baru diberikan, update passwords map
     if (data.password && data.password.trim()) {
-      globalState.passwords.set(id, data.password.trim());
+      globalState.passwords.set(id, hashPassword(data.password.trim()));
     }
 
     // Pengelolaan is_locked & failed_login_attempts
@@ -1164,7 +1179,7 @@ export const repository = {
     }
 
     const pass = newPassword || 'password123';
-    globalState.passwords.set(id, pass);
+    globalState.passwords.set(id, hashPassword(pass));
 
     // Otomatis buka kunci jika akun sebelumnya terkunci
     const profile = globalState.profiles.find((p) => p.id === id);
@@ -4445,7 +4460,7 @@ export const repository = {
     }
 
     const expectedPass = globalState.passwords.get(user.id) || 'password123';
-    if (passwordPlain !== expectedPass) {
+    if (!verifyPassword(passwordPlain, expectedPass)) {
       // Super Admin dikecualikan: tidak pernah terkunci
       if (user.role === 'SUPER_ADMIN') {
         throw new Error('Kata sandi yang Anda masukkan salah.');

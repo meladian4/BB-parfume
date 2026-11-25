@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { repository } from '@/lib/db/repository';
+import { signSessionToken } from '@/lib/auth/crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,16 +48,20 @@ export async function POST(request: NextRequest) {
       redirectUrl,
     });
 
-    // Set cookie untuk server-side session identification
-    response.cookies.set('bb_user_session', JSON.stringify({
+    // Set HttpOnly signed cookie (HMAC-SHA256) agar tidak bisa dibaca/dipalsukan lewat browser DevTools
+    const signedToken = signSessionToken({
       id: user.id,
       userId: user.id,
       email: user.email,
       role: user.role,
-      assigned_store_id: user.assigned_store_id,
-    }), {
+      assigned_store_id: user.assigned_store_id ?? null,
+    });
+
+    response.cookies.set('bb_user_session', signedToken, {
       path: '/',
-      httpOnly: false,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 60 * 60 * 24 * 7, // 7 hari
     });
 
