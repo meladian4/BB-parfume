@@ -812,7 +812,7 @@ class MemoryDatabaseState {
         if (Array.isArray(parsed.saleItems)) this.saleItems = parsed.saleItems;
         if (Array.isArray(parsed.payments)) this.payments = parsed.payments;
         if (Array.isArray(parsed.expenses)) this.expenses = parsed.expenses;
-        if (Array.isArray(parsed.members) && parsed.members.length > 0) this.members = parsed.members;
+        if (Array.isArray(parsed.members)) this.members = parsed.members;
         if (Array.isArray(parsed.pointTransactions)) this.pointTransactions = parsed.pointTransactions;
         if (Array.isArray(parsed.auditLogs)) this.auditLogs = parsed.auditLogs;
         if (Array.isArray(parsed.cashSessions)) this.cashSessions = parsed.cashSessions;
