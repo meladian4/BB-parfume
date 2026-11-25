@@ -26,6 +26,8 @@ import {
   CheckSquare,
   Square,
   ListChecks,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 
 export default function LogisticsPurchasesPage() {
@@ -48,6 +50,9 @@ export default function LogisticsPurchasesPage() {
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [purchaseNotes, setPurchaseNotes] = useState('');
   const [requestItems, setRequestItems] = useState<Array<{ product_id: string; quantity: number | '' }>>([]);
+  const [modalProductSearch, setModalProductSearch] = useState('');
+  const [openRowDropdownIdx, setOpenRowDropdownIdx] = useState<number | null>(null);
+  const [rowSearchQuery, setRowSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -201,6 +206,37 @@ export default function LogisticsPurchasesPage() {
 
   const handleSetAllQuantities = (qty: number) => {
     setRequestItems((prev) => prev.map((item) => ({ ...item, quantity: qty })));
+  };
+
+  // Hasil pencarian cepat produk di dalam Modal Permintaan Restock
+  const modalQuickSearchResults = useMemo(() => {
+    const q = modalProductSearch.trim().toLowerCase();
+    if (!q) return [];
+    return products
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+          (p.scent_type && p.scent_type.toLowerCase().includes(q))
+      )
+      .slice(0, 10);
+  }, [products, modalProductSearch]);
+
+  const handleQuickAddProductToRequest = (productId: string) => {
+    setRequestItems((prev) => {
+      const existingIdx = prev.findIndex((it) => it.product_id === productId);
+      if (existingIdx !== -1) {
+        // Jika sudah ada, cukup tambah kuantitas atau biarkan terpilih
+        const next = [...prev];
+        const curQty = Number(next[existingIdx].quantity) || 0;
+        next[existingIdx] = { ...next[existingIdx], quantity: curQty + 10 };
+        return next;
+      }
+      // Jika hanya ada 1 baris default kosong/pertama yang belum diubah, atau langsung tambah baris baru
+      return [...prev, { product_id: productId, quantity: 10 }];
+    });
+    setModalProductSearch('');
   };
 
   const handleCreateRequest = async (e: React.FormEvent) => {
@@ -695,12 +731,92 @@ export default function LogisticsPurchasesPage() {
       {/* Modal Formulir Permintaan Pembelanjaan Barang ke Super Admin */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => !submitting && setIsModalOpen(false)}
+        onClose={() => {
+          if (!submitting) {
+            setIsModalOpen(false);
+            setModalProductSearch('');
+            setOpenRowDropdownIdx(null);
+            setRowSearchQuery('');
+          }
+        }}
         title="Formulir Permintaan Pembelanjaan Barang (Restock)"
-        description="Pilih item produk dari master persediaan untuk diajukan ke Super Admin sebagai bahan acuan pembelanjaan."
+        description="Cari dan pilih item produk dari master persediaan untuk diajukan ke Super Admin sebagai bahan acuan pembelanjaan."
         maxWidth="2xl"
       >
         <form onSubmit={handleCreateRequest} className="space-y-4">
+          {/* Kotak Pencarian Cepat Produk */}
+          <div className="space-y-1.5 relative">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Cari &amp; Tambah Cepat Produk:</span>
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Ketik nama parfum, botol, pelarut, atau kode SKU (contoh: Baccarat, Botol 30, BBK-0016)..."
+                value={modalProductSearch}
+                onChange={(e) => setModalProductSearch(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 bg-[#090D16] border border-slate-700 focus:border-[#D4AF37] rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/40"
+              />
+              {modalProductSearch && (
+                <button
+                  type="button"
+                  onClick={() => setModalProductSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {modalProductSearch.trim() && (
+              <div className="rounded-xl border border-slate-700 bg-[#0B1120] shadow-2xl max-h-52 overflow-y-auto divide-y divide-slate-800/80">
+                {modalQuickSearchResults.length === 0 ? (
+                  <div className="p-3 text-xs text-slate-400 text-center">
+                    Produk &ldquo;{modalProductSearch}&rdquo; tidak ditemukan di katalog.
+                  </div>
+                ) : (
+                  modalQuickSearchResults.map((p) => {
+                    const whStock = getWarehouseStock(p.id);
+                    const alreadyAdded = requestItems.some((r) => r.product_id === p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleQuickAddProductToRequest(p.id)}
+                        className="w-full px-3 py-2 flex items-center justify-between gap-2 text-left hover:bg-slate-800/70 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-white truncate">
+                            <span className="font-mono text-[#D4AF37] mr-1.5">[{p.sku}]</span>
+                            {p.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">
+                            {p.scent_type || 'Produk'} • Stok Gudang:{' '}
+                            <strong className="text-emerald-400">
+                              {whStock} {formatProductUnit(p)}
+                            </strong>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 ${
+                            alreadyAdded
+                              ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-700/60'
+                              : 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40'
+                          }`}
+                        >
+                          {alreadyAdded ? '+10 Qty' : '+ Tambah'}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Dynamic Item Rows from Master Data */}
           <div className="space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -753,55 +869,144 @@ export default function LogisticsPurchasesPage() {
               {requestItems.map((row, idx) => {
                 const currentStock = getWarehouseStock(row.product_id);
                 const selectedProd = products.find((p) => p.id === row.product_id);
-                const minBuffer = selectedProd?.min_stock_alert || 5;
+                const isRowOpen = openRowDropdownIdx === idx;
+                const rowMatches = isRowOpen
+                  ? products
+                      .filter((p) => {
+                        const q = rowSearchQuery.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          p.name.toLowerCase().includes(q) ||
+                          p.sku.toLowerCase().includes(q) ||
+                          (p.barcode && p.barcode.toLowerCase().includes(q))
+                        );
+                      })
+                      .slice(0, 30)
+                  : [];
 
                 return (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center gap-3 text-xs"
+                    className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex flex-col gap-2 text-xs"
                   >
-                    <div className="flex-1 w-full sm:w-auto">
-                      <select
-                        value={row.product_id}
-                        onChange={(e) => updateItemRow(idx, 'product_id', e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-[#0F172A] border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                      >
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            [{p.sku}] {p.name} ({p.size_ml} ml)
-                          </option>
-                        ))}
-                      </select>
-                      <div className="text-[10px] text-slate-400 mt-1">
-                        <span>Total Stok Gudang: <strong className="text-emerald-400 font-semibold">{currentStock} {formatProductUnit(selectedProd)}</strong></span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-400 text-[11px]">Jumlah:</span>
-                        <input
-                          type="number"
-                          min={1}
-                          required
-                          value={row.quantity}
-                          onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
-                          className="w-20 px-2 py-1 bg-[#0F172A] border border-slate-700 rounded-lg text-xs font-mono font-bold text-white text-center focus:outline-none focus:border-[#D4AF37]"
-                        />
-                        <span className="text-slate-400 text-[11px]">{formatProductUnit(selectedProd)}</span>
-                      </div>
-
-                      {requestItems.length > 1 && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <div className="flex-1 w-full sm:w-auto min-w-0">
                         <button
                           type="button"
-                          onClick={() => removeItemRow(idx)}
-                          className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-950/40"
-                          title="Hapus baris"
+                          onClick={() => {
+                            if (isRowOpen) {
+                              setOpenRowDropdownIdx(null);
+                              setRowSearchQuery('');
+                            } else {
+                              setOpenRowDropdownIdx(idx);
+                              setRowSearchQuery('');
+                            }
+                          }}
+                          className={`w-full px-2.5 py-1.5 bg-[#0F172A] border rounded-lg text-xs text-white flex items-center justify-between gap-2 text-left transition-colors ${
+                            isRowOpen
+                              ? 'border-[#D4AF37]'
+                              : 'border-slate-700 hover:border-slate-600'
+                          }`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="truncate">
+                            {selectedProd
+                              ? `[${selectedProd.sku}] ${selectedProd.name} (${selectedProd.size_ml} ml)`
+                              : 'Pilih produk...'}
+                          </span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
+                              isRowOpen ? 'rotate-180 text-[#D4AF37]' : ''
+                            }`}
+                          />
                         </button>
-                      )}
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          <span>
+                            Total Stok Gudang:{' '}
+                            <strong className="text-emerald-400 font-semibold">
+                              {currentStock} {formatProductUnit(selectedProd)}
+                            </strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-400 text-[11px]">Jumlah:</span>
+                          <input
+                            type="number"
+                            min={1}
+                            required
+                            value={row.quantity}
+                            onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
+                            className="w-20 px-2 py-1 bg-[#0F172A] border border-slate-700 rounded-lg text-xs font-mono font-bold text-white text-center focus:outline-none focus:border-[#D4AF37]"
+                          />
+                          <span className="text-slate-400 text-[11px]">{formatProductUnit(selectedProd)}</span>
+                        </div>
+
+                        {requestItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeItemRow(idx);
+                              if (openRowDropdownIdx === idx) setOpenRowDropdownIdx(null);
+                            }}
+                            className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-950/40"
+                            title="Hapus baris"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Inline Searchable Product Picker untuk baris ini */}
+                    {isRowOpen && (
+                      <div className="mt-1 p-2 rounded-lg bg-[#090D16] border border-slate-700 space-y-1.5">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="Cari nama produk / SKU..."
+                            value={rowSearchQuery}
+                            onChange={(e) => setRowSearchQuery(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 bg-[#0F172A] border border-slate-700 focus:border-[#D4AF37] rounded-md text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                          />
+                        </div>
+                        <div className="max-h-40 overflow-y-auto divide-y divide-slate-800/70">
+                          {rowMatches.length === 0 ? (
+                            <div className="py-2 text-center text-[11px] text-slate-400">
+                              Tidak ada produk yang cocok.
+                            </div>
+                          ) : (
+                            rowMatches.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  updateItemRow(idx, 'product_id', p.id);
+                                  setOpenRowDropdownIdx(null);
+                                  setRowSearchQuery('');
+                                }}
+                                className={`w-full px-2.5 py-1.5 text-left text-xs flex items-center justify-between gap-2 transition-colors ${
+                                  p.id === row.product_id
+                                    ? 'bg-[#D4AF37]/15 text-[#D4AF37] font-semibold'
+                                    : 'text-slate-200 hover:bg-slate-800'
+                                }`}
+                              >
+                                <span className="truncate">
+                                  <span className="font-mono text-[#D4AF37] mr-1">[{p.sku}]</span>
+                                  {p.name} ({p.size_ml} ml)
+                                </span>
+                                <span className="text-[10px] text-emerald-400 shrink-0">
+                                  {getWarehouseStock(p.id)} {formatProductUnit(p)}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
