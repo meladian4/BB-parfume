@@ -1,374 +1,394 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Sparkles,
   Shield,
   ArrowRight,
   Lock,
   Mail,
-  Crown,
-  Boxes,
-  Receipt,
-  CheckCircle2,
-  ChevronDown,
+  User,
   Building2,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { BBLogo } from '@/components/ui/BBLogo';
+
+interface LoginAccountOption {
+  email: string;
+  full_name: string;
+  role: 'SUPER_ADMIN' | 'LOGISTICS' | 'CASHIER';
+  store_name?: string | null;
+}
+
+const DEFAULT_ACCOUNTS: LoginAccountOption[] = [
+  { email: 'admin@bbparfum.id', full_name: 'Super Admin Utama', role: 'SUPER_ADMIN', store_name: null },
+  { email: 'logistik@bbparfum.id', full_name: 'Logistik Gudang Pusat', role: 'LOGISTICS', store_name: null },
+  { email: 'kasir.kendal@bbparfum.id', full_name: 'Kasir Toko Kendal Kota', role: 'CASHIER', store_name: 'Toko 1 - Kendal Kota' },
+  { email: 'kasir.pegandon@bbparfum.id', full_name: 'Kasir Toko Pegandon', role: 'CASHIER', store_name: 'Toko 2 - Pegandon' },
+  { email: 'kasir.kaliwungu@bbparfum.id', full_name: 'Kasir Toko Kaliwungu', role: 'CASHIER', store_name: 'Toko 3 - Kaliwungu' },
+];
+
+const CUSTOM_ACCOUNT_VALUE = '__CUSTOM__';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [accounts, setAccounts] = useState<LoginAccountOption[]>(DEFAULT_ACCOUNTS);
+  const [selectedAccount, setSelectedAccount] = useState<string>(DEFAULT_ACCOUNTS[0].email);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [customEmail, setCustomEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loadingRole, setLoadingRole] = useState<string | null>(null);
-  const [showManualForm, setShowManualForm] = useState(false);
-  const [selectedCashierEmail, setSelectedCashierEmail] = useState('kasir.kendal@bbparfum.id');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 1-Click Direct Login Handler
-  const handleQuickLogin = async (targetEmail: string, redirectTarget: string) => {
-    setLoadingRole(targetEmail);
-    setError('');
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, password: 'password123' }),
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/accounts')
+      .then((r) => r.json())
+      .then((data) => {
+        if (active && data?.success && Array.isArray(data.accounts) && data.accounts.length > 0) {
+          setAccounts(data.accounts);
+          setSelectedAccount((prev) => {
+            if (prev === CUSTOM_ACCOUNT_VALUE) return prev;
+            const exists = data.accounts.some((a: LoginAccountOption) => a.email === prev);
+            return exists ? prev : data.accounts[0].email;
+          });
+        }
+      })
+      .catch(() => {
+        // Keep fallback DEFAULT_ACCOUNTS
       });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Gagal masuk ke pos akun.');
+  // Tutup dropdown saat klik di luar atau tekan Escape
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
       }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [dropdownOpen]);
 
-      localStorage.setItem('bb_current_user', JSON.stringify(data.user));
-      router.push(redirectTarget || data.redirectUrl);
-    } catch (err: any) {
-      setError(err.message || 'Gagal masuk. Silakan coba lagi.');
-      setLoadingRole(null);
+  const roleBadgeStyle = (role: string) => {
+    if (role === 'SUPER_ADMIN') {
+      return {
+        label: 'Super Admin',
+        cls: 'bg-[#D4AF37]/15 text-[#D4AF37] border-[#D4AF37]/30',
+      };
     }
+    if (role === 'LOGISTICS') {
+      return {
+        label: 'Logistik',
+        cls: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+      };
+    }
+    return {
+      label: 'Kasir',
+      cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    };
   };
 
-  // Manual Form Login Handler
-  const handleManualLogin = async (e: React.FormEvent) => {
+  const activeAccountObj = accounts.find((a) => a.email === selectedAccount) || null;
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoadingRole('manual');
+    const targetEmail =
+      selectedAccount === CUSTOM_ACCOUNT_VALUE ? customEmail.trim() : selectedAccount.trim();
+
+    if (!targetEmail) {
+      setError('Silakan pilih atau masukkan username/email akun.');
+      return;
+    }
+
+    setLoading(true);
     setError('');
 
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ email: targetEmail, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Email atau kata sandi tidak valid.');
+        throw new Error(data.error || 'Username atau kata sandi tidak valid.');
       }
 
       localStorage.setItem('bb_current_user', JSON.stringify(data.user));
       router.push(data.redirectUrl);
     } catch (err: any) {
-      setError(err.message || 'Gagal masuk. Periksa kembali email dan kata sandi Anda.');
-      setLoadingRole(null);
+      setError(err.message || 'Gagal masuk. Periksa kembali username dan kata sandi Anda.');
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#070A0F] flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#070A0F] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden font-sans">
       {/* Ambient background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="w-full max-w-5xl relative z-10 space-y-8 my-auto">
+      <div className="w-full max-w-md relative z-10 space-y-6 my-auto">
         {/* Header Branding */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-3 rounded-3xl bg-gradient-to-b from-[#1E293B] to-[#0A0F1D] border border-[#D4AF37]/40 shadow-2xl shadow-[#D4AF37]/20 hover:scale-105 transition-transform duration-300">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center p-3 rounded-3xl bg-gradient-to-b from-[#1E293B] to-[#0A0F1D] border border-[#D4AF37]/40 shadow-2xl shadow-[#D4AF37]/20">
             <BBLogo variant="gold" size="xl" />
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-wider">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wider">
               BB PARFUM <span className="text-[#D4AF37] font-light">PREMIUM</span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 max-w-2xl mx-auto mt-2">
-              Sistem Manajemen Terpadu: 1 Gudang Pusat Distribusi & 3 Toko Cabang (Kendal Kota, Pegandon, Kaliwungu)
+            <p className="text-xs text-slate-400 mt-1.5">
+              Sistem Operasional &amp; POS Manajemen Multi-Cabang
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] text-[#D4AF37] shadow-sm">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Semua Dashboard Aktif • Akses Cepat Langsung di Bawah</span>
-          </div>
         </div>
 
-        {error && (
-          <div className={`max-w-xl mx-auto text-xs p-4 rounded-xl border flex items-start gap-3 shadow-xl ${
-            error.includes('TERKUNCI')
-              ? 'bg-rose-950 text-rose-200 border-rose-700 animate-pulse'
-              : 'bg-rose-950/70 text-rose-300 border-rose-800/80'
-          }`}>
-            <span className="text-base shrink-0">{error.includes('TERKUNCI') ? '🔒' : '⚠️'}</span>
-            <div className="space-y-1">
-              <span className="font-semibold block">{error}</span>
-              {error.includes('Kata sandi') && !showManualForm && (
-                <button
-                  type="button"
-                  onClick={() => setShowManualForm(true)}
-                  className="text-[11px] text-[#D4AF37] hover:underline block pt-1"
-                >
-                  &rarr; Buka form login manual dengan email & kata sandi kustom
-                </button>
-              )}
+        {/* Normal Login Card */}
+        <Card bordered className="border-slate-800 bg-[#0F172A]/95 shadow-2xl overflow-visible">
+          <CardContent className="p-6 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+              <div>
+                <h2 className="text-base font-bold text-white">Masuk ke Sistem</h2>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  Pilih akun pengguna lalu masukkan kata sandi Anda
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37] shrink-0">
+                <Shield className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-        )}
 
-        {/* 3 Active Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Card 1: Super Admin */}
-          <Card
-            bordered
-            className="border-slate-800 bg-[#0F172A]/90 hover:border-[#D4AF37]/60 transition-all duration-200 flex flex-col justify-between shadow-xl group"
-          >
-            <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#D4AF37] flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Crown className="w-6 h-6" />
-                  </div>
-                  <Badge variant="gold" size="sm">
-                    Owner & Pimpinan
-                  </Badge>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-white group-hover:text-[#D4AF37] transition-colors">
-                    Dashboard Super Admin
-                  </h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">admin@bbparfum.id</p>
-                </div>
-
-                <ul className="text-xs text-slate-300 space-y-1.5 pt-1 border-t border-slate-800/80">
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
-                    <span>Laba Rugi, Omzet & Margin HPP</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
-                    <span>Master Produk, Bibit & Satuan ml</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
-                    <span>Biaya OPEX & Pengguna Multi-Cabang</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
-                    <span>Audit Trail Logistik & Finansial</span>
-                  </li>
-                </ul>
+            {error && (
+              <div
+                className={`text-xs p-3.5 rounded-xl border flex items-start gap-2.5 ${
+                  error.includes('TERKUNCI')
+                    ? 'bg-rose-950 text-rose-200 border-rose-700 animate-pulse'
+                    : 'bg-rose-950/70 text-rose-300 border-rose-800/80'
+                }`}
+              >
+                <span className="text-sm shrink-0">{error.includes('TERKUNCI') ? '🔒' : '⚠️'}</span>
+                <span className="font-medium leading-relaxed">{error}</span>
               </div>
+            )}
 
-              <div className="pt-4">
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="w-full bg-gradient-to-r from-[#D4AF37] to-[#E5C365] text-[#070A0F] font-bold shadow-md shadow-[#D4AF37]/20 hover:brightness-110"
-                  isLoading={loadingRole === 'admin@bbparfum.id'}
-                  onClick={() => handleQuickLogin('admin@bbparfum.id', '/superadmin')}
+            <form onSubmit={handleLogin} className="space-y-4">
+              {/* Custom Single-Line Username / Account Selector */}
+              <div className="space-y-1.5" ref={dropdownRef}>
+                <label
+                  htmlFor="login-account-trigger"
+                  className="block text-xs font-semibold text-slate-300"
                 >
-                  <span>Buka Super Admin</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+                  Username / Akun
+                </label>
 
-          {/* Card 2: Logistik & Gudang */}
-          <Card
-            bordered
-            className="border-slate-800 bg-[#0F172A]/90 hover:border-blue-500/60 transition-all duration-200 flex flex-col justify-between shadow-xl group"
-          >
-            <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Boxes className="w-6 h-6" />
-                  </div>
-                  <Badge variant="blue" size="sm">
-                    Gudang Distribusi
-                  </Badge>
-                </div>
+                <div className="relative">
+                  <button
+                    id="login-account-trigger"
+                    type="button"
+                    onClick={() => setDropdownOpen((o) => !o)}
+                    aria-haspopup="listbox"
+                    aria-expanded={dropdownOpen}
+                    className={`w-full h-11 bg-[#090D16] border rounded-xl pl-3.5 pr-3 flex items-center justify-between gap-2 text-left transition-colors focus:outline-none ${
+                      dropdownOpen
+                        ? 'border-[#D4AF37] ring-1 ring-[#D4AF37]/50'
+                        : 'border-slate-700 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <User className="w-4 h-4 text-slate-400 shrink-0" />
+                      {selectedAccount === CUSTOM_ACCOUNT_VALUE ? (
+                        <span className="text-sm text-[#D4AF37] font-medium truncate">
+                          Lainnya (Ketik Email Manual)
+                        </span>
+                      ) : activeAccountObj ? (
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-sm text-slate-100 font-medium truncate">
+                            {activeAccountObj.full_name}
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${
+                              roleBadgeStyle(activeAccountObj.role).cls
+                            }`}
+                          >
+                            {roleBadgeStyle(activeAccountObj.role).label}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400 truncate">Pilih akun...</span>
+                      )}
+                    </div>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+                        dropdownOpen ? 'rotate-180 text-[#D4AF37]' : ''
+                      }`}
+                    />
+                  </button>
 
-                <div>
-                  <h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
-                    Dashboard Logistik
-                  </h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">logistik@bbparfum.id</p>
-                </div>
-
-                <ul className="text-xs text-slate-300 space-y-1.5 pt-1 border-t border-slate-800/80">
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>Saldo Stok Persediaan Bahan & Bibit</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>Penyesuaian Fisik & Stock Opname</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>Mutasi Stok ke 3 Cabang Retail</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                    <span>Buku Besar Mutasi & Kartu Stok</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="pt-4">
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/20"
-                  isLoading={loadingRole === 'logistik@bbparfum.id'}
-                  onClick={() => handleQuickLogin('logistik@bbparfum.id', '/logistics')}
-                >
-                  <span>Buka Logistik Gudang</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 3: Kasir POS Terminal */}
-          <Card
-            bordered
-            className="border-slate-800 bg-[#0F172A]/90 hover:border-emerald-500/60 transition-all duration-200 flex flex-col justify-between shadow-xl group"
-          >
-            <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Receipt className="w-6 h-6" />
-                  </div>
-                  <Badge variant="emerald" size="sm">
-                    Kasir Retail Kendal
-                  </Badge>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
-                    Terminal Kasir POS
-                  </h3>
-                  <div className="mt-1">
-                    <select
-                      value={selectedCashierEmail}
-                      onChange={(e) => setSelectedCashierEmail(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+                  {/* Floating Dropdown Menu */}
+                  {dropdownOpen && (
+                    <div
+                      role="listbox"
+                      className="absolute left-0 right-0 top-full mt-1.5 z-30 rounded-xl border border-slate-700/90 bg-[#0B1120] shadow-2xl shadow-black/60 py-1 max-h-80 overflow-y-auto"
                     >
-                      <option value="kasir.kendal@bbparfum.id">Toko Kendal Kota (kasir.kendal)</option>
-                      <option value="kasir.pegandon@bbparfum.id">Toko Pegandon (kasir.pegandon)</option>
-                      <option value="kasir.kaliwungu@bbparfum.id">Toko Kaliwungu (kasir.kaliwungu)</option>
-                    </select>
-                  </div>
+                      {accounts.map((acc) => {
+                        const isSelected = selectedAccount === acc.email;
+                        const badge = roleBadgeStyle(acc.role);
+                        return (
+                          <button
+                            key={acc.email}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              setSelectedAccount(acc.email);
+                              setDropdownOpen(false);
+                              setError('');
+                            }}
+                            className={`w-full px-3.5 py-2 flex items-center justify-between gap-2 text-left transition-colors ${
+                              isSelected
+                                ? 'bg-[#D4AF37]/10 text-white'
+                                : 'text-slate-200 hover:bg-slate-800/70'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold truncate">
+                                  {acc.full_name}
+                                </span>
+                                <span
+                                  className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${badge.cls}`}
+                                >
+                                  {badge.label}
+                                </span>
+                              </div>
+                              <div className="text-[11px] font-mono text-slate-400 truncate mt-0.5">
+                                {acc.email}
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })}
+
+                      <div className="border-t border-slate-800 my-1" />
+
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={selectedAccount === CUSTOM_ACCOUNT_VALUE}
+                        onClick={() => {
+                          setSelectedAccount(CUSTOM_ACCOUNT_VALUE);
+                          setDropdownOpen(false);
+                          setError('');
+                        }}
+                        className={`w-full px-3.5 py-2.5 flex items-center justify-between gap-2 text-left transition-colors ${
+                          selectedAccount === CUSTOM_ACCOUNT_VALUE
+                            ? 'bg-[#D4AF37]/10 text-[#D4AF37]'
+                            : 'text-slate-300 hover:bg-slate-800/70 hover:text-[#D4AF37]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 text-xs font-medium">
+                          <Mail className="w-3.5 h-3.5 shrink-0" />
+                          <span>Lainnya (Ketik Email Manual)...</span>
+                        </div>
+                        {selectedAccount === CUSTOM_ACCOUNT_VALUE && (
+                          <Check className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
-
-                <ul className="text-xs text-slate-300 space-y-1.5 pt-1 border-t border-slate-800/80">
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Penjualan Ritel & Barcode Scanner</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>🧪 Racik & Campur Bibit (Custom Blend)</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Buka/Tutup Kas (Shift Laci Kasir)</span>
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>Cetak Struk Thermal 58mm/80mm & Loyalty</span>
-                  </li>
-                </ul>
               </div>
 
-              <div className="pt-4">
-                <Button
-                  variant="primary"
-                  size="md"
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-600/20"
-                  isLoading={loadingRole === selectedCashierEmail}
-                  onClick={() => handleQuickLogin(selectedCashierEmail, '/cashier')}
-                >
-                  <span>Buka Kasir POS</span>
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Collapsible Manual Login */}
-        <div className="max-w-md mx-auto pt-2">
-          <button
-            type="button"
-            onClick={() => setShowManualForm(!showManualForm)}
-            className="w-full text-center text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1 transition"
-          >
-            <span>Masuk menggunakan email & kata sandi kustom</span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 transition-transform ${showManualForm ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-          {showManualForm && (
-            <Card bordered className="mt-4 border-slate-800 bg-[#0F172A]/90 p-5 shadow-2xl">
-              <form onSubmit={handleManualLogin} className="space-y-4">
+              {/* Optional Custom Email Input when 'Lainnya' is chosen */}
+              {selectedAccount === CUSTOM_ACCOUNT_VALUE && (
                 <Input
-                  label="Email Akun"
+                  label="Email Akun Kustom"
                   type="email"
-                  placeholder="admin@bbparfum.id"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nama@bbparfum.id"
+                  value={customEmail}
+                  onChange={(e) => setCustomEmail(e.target.value)}
                   leftIcon={<Mail className="w-4 h-4 text-slate-400" />}
                   required
+                  autoFocus
                 />
-                <Input
-                  label="Kata Sandi"
-                  type="password"
-                  placeholder="Kata sandi akun"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
-                  required
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="md"
-                  className="w-full bg-[#D4AF37] text-black font-bold"
-                  isLoading={loadingRole === 'manual'}
+              )}
+
+              {/* Password Input with Show/Hide Toggle */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="login-password"
+                  className="block text-xs font-semibold text-slate-300"
                 >
-                  Masuk Manual
-                </Button>
-              </form>
-            </Card>
-          )}
-        </div>
+                  Kata Sandi
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    id="login-password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Masukkan kata sandi akun"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    className="w-full h-11 bg-[#090D16] border border-slate-700 hover:border-slate-600 focus:border-[#D4AF37] rounded-xl pl-10 pr-10 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/50 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                    title={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                    aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                className="w-full h-11 bg-gradient-to-r from-[#D4AF37] to-[#E5C365] text-[#070A0F] font-bold shadow-lg shadow-[#D4AF37]/20 hover:brightness-110 mt-2"
+                isLoading={loading}
+              >
+                <span>Masuk</span>
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Footer info */}
-        <div className="text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+        <div className="text-center text-[11px] text-slate-500 flex items-center justify-center gap-1.5">
           <Building2 className="w-3.5 h-3.5 text-[#D4AF37]" />
-          <span>BB Parfum Premium Kendal • Zona Waktu Asia/Jakarta (WIB) • Mata Uang IDR</span>
+          <span>BB Parfum Premium Kendal • Asia/Jakarta (WIB) • IDR</span>
         </div>
       </div>
     </div>

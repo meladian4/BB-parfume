@@ -469,7 +469,13 @@ class MemoryDatabaseState {
 
   // Operational Expenses
   expenses: Expense[] = [...INITIAL_EXPENSES];
-  passwords: Map<string, string> = new Map();
+  passwords: Map<string, string> = new Map([
+    ['u0000000-0000-0000-0000-000000000001', 'berkahbarokahamiin'],
+    ['u0000000-0000-0000-0000-000000000002', 'logistikkendal1'],
+    ['u0000000-0000-0000-0000-000000000003', 'bbkendal1'],
+    ['u0000000-0000-0000-0000-000000000004', 'bbpegandon1'],
+    ['u0000000-0000-0000-0000-000000000005', 'bbkaliwungu1'],
+  ]);
 
   // Company Master Wallet Ledger
   companyWalletTransactions: CompanyWalletTransaction[] = [];
