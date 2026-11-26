@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { formatDateTimeJakarta } from '@/lib/formatters';
 import { Member, PointTransaction, UserProfile } from '@/types/domain';
-import { Users, Search, Plus, Phone, Mail, Award, History, CheckCircle2, UserCheck, CreditCard, Calendar, ArrowUpDown } from 'lucide-react';
+import { Users, Search, Plus, Phone, Mail, Award, History, CheckCircle2, UserCheck, CreditCard, Calendar, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 type DatePreset = 'TODAY' | 'YESTERDAY' | 'LAST_7' | 'THIS_MONTH' | 'ALL' | 'CUSTOM';
 
@@ -24,6 +24,8 @@ export default function CashierMembersPage() {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [sortBy, setSortBy] = useState<'DATE_DESC' | 'DATE_ASC' | 'POINTS_DESC'>('DATE_DESC');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   // State Modal Tambah Member
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -226,10 +228,23 @@ export default function CashierMembersPage() {
       return sortBy === 'DATE_ASC' ? timeA - timeB : timeB - timeA;
     });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, employeeFilter, datePreset, customStartDate, customEndDate, sortBy, pageSize]);
+
+  const totalMembersCount = filteredMembers.length;
+  const effectivePageSize = pageSize === 0 ? Math.max(totalMembersCount, 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalMembersCount / effectivePageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * effectivePageSize;
+  const endIdx = Math.min(startIdx + effectivePageSize, totalMembersCount);
+  const paginatedMembers =
+    pageSize === 0 ? filteredMembers : filteredMembers.slice(startIdx, endIdx);
+
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-20 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-white flex items-center gap-2">
@@ -463,7 +478,7 @@ export default function CashierMembersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1E293B]/60">
-                  {filteredMembers.map((m) => (
+                  {paginatedMembers.map((m) => (
                     <tr key={m.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
@@ -534,6 +549,61 @@ export default function CashierMembersPage() {
                 </tbody>
               </table>
             </div>
+
+            {totalMembersCount > 0 && (
+              <div className="px-4 py-3 bg-[#0F172A] border-t border-[#1E293B] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 flex-wrap text-slate-400">
+                  <span>
+                    Menampilkan{' '}
+                    <strong className="text-white">
+                      {startIdx + 1}-{endIdx}
+                    </strong>{' '}
+                    dari <strong className="text-white">{totalMembersCount}</strong> member
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Per halaman:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="bg-[#0A0E1A] border border-[#1E293B] rounded-lg px-2 py-1 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={0}>Semua</option>
+                    </select>
+                  </div>
+                </div>
+
+                {pageSize !== 0 && totalPages > 1 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="inline-flex items-center gap-1 px-3 min-h-[36px] rounded-lg bg-[#0A0E1A] border border-[#1E293B] text-slate-200 hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Prev</span>
+                    </button>
+
+                    <span className="px-2.5 py-1 text-slate-300 font-semibold">
+                      Hal {safePage} / {totalPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="inline-flex items-center gap-1 px-3 min-h-[36px] rounded-lg bg-[#0A0E1A] border border-[#1E293B] text-slate-200 hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </main>
       </div>

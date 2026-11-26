@@ -375,7 +375,7 @@ export default function CashierHistoryPage() {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-20 space-y-6">
           {/* Header */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>

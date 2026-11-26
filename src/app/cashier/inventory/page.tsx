@@ -20,6 +20,8 @@ import {
   RefreshCw,
   Package,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 type StockStatusFilter = 'ALL' | 'ALERT_ALL' | 'LOW' | 'EMPTY' | 'SAFE';
@@ -37,6 +39,8 @@ export default function CashierInventoryPage() {
   const [statusFilter, setStatusFilter] = useState<StockStatusFilter>('ALL');
   const [typeFilter, setTypeFilter] = useState<ProductTypeFilter>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('STOCK_ASC');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   // Modal Riwayat Kartu Stok
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
@@ -191,6 +195,19 @@ export default function CashierInventoryPage() {
       });
   }, [baseFiltered, statusFilter, sortBy]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, typeFilter, sortBy, selectedStoreId, pageSize]);
+
+  const totalItems = displayedBalances.length;
+  const effectivePageSize = pageSize === 0 ? Math.max(totalItems, 1) : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIdx = (safePage - 1) * effectivePageSize;
+  const endIdx = Math.min(startIdx + effectivePageSize, totalItems);
+  const paginatedBalances =
+    pageSize === 0 ? displayedBalances : displayedBalances.slice(startIdx, endIdx);
+
   const handleOpenMovements = async (item: InventoryBalance) => {
     setActiveBalance(item);
     setIsMovementModalOpen(true);
@@ -213,7 +230,7 @@ export default function CashierInventoryPage() {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-20 space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -487,7 +504,7 @@ export default function CashierInventoryPage() {
                       </td>
                     </tr>
                   ) : (
-                    displayedBalances.map((item) => {
+                    paginatedBalances.map((item) => {
                       const prod = item.product;
                       const unit = formatProductUnit(prod);
                       const group = getProductCategoryGroup(prod);
@@ -587,6 +604,62 @@ export default function CashierInventoryPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Bar */}
+            {totalItems > 0 && (
+              <div className="px-4 py-3 bg-[#0F172A] border-t border-[#1E293B] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 flex-wrap text-slate-400">
+                  <span>
+                    Menampilkan{' '}
+                    <strong className="text-white">
+                      {startIdx + 1}-{endIdx}
+                    </strong>{' '}
+                    dari <strong className="text-white">{totalItems}</strong> barang
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Per halaman:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="bg-[#0A0E1A] border border-[#1E293B] rounded-lg px-2 py-1 text-white font-semibold focus:outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={0}>Semua</option>
+                    </select>
+                  </div>
+                </div>
+
+                {pageSize !== 0 && totalPages > 1 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="inline-flex items-center gap-1 px-3 min-h-[36px] rounded-lg bg-[#0A0E1A] border border-[#1E293B] text-slate-200 hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Prev</span>
+                    </button>
+
+                    <span className="px-2.5 py-1 text-slate-300 font-semibold">
+                      Hal {safePage} / {totalPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="inline-flex items-center gap-1 px-3 min-h-[36px] rounded-lg bg-[#0A0E1A] border border-[#1E293B] text-slate-200 hover:border-[#D4AF37]/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                      <span>Next</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </main>
       </div>

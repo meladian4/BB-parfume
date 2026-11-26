@@ -81,7 +81,7 @@ export default function CashierReturnsPage() {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-y-auto p-6 space-y-6">
+        <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-20 space-y-6">
           <div>
             <h1 className="text-xl font-bold text-white flex items-center gap-2">
               <RotateCcw className="w-5 h-5 text-[#D4AF37]" />
