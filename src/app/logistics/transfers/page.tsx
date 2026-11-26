@@ -26,6 +26,9 @@ import {
   ShieldCheck,
   Crown,
   RotateCcw,
+  Search,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 
 export default function TransfersPage() {
@@ -43,6 +46,9 @@ export default function TransfersPage() {
   const [destinationStoreId, setDestinationStoreId] = useState('');
   const [transferNotes, setTransferNotes] = useState('');
   const [transferItems, setTransferItems] = useState<Array<{ product_id: string; quantity: number | '' }>>([]);
+  const [modalProductSearch, setModalProductSearch] = useState('');
+  const [openRowDropdownIdx, setOpenRowDropdownIdx] = useState<number | null>(null);
+  const [rowSearchQuery, setRowSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -637,10 +643,15 @@ export default function TransfersPage() {
       {/* Modal Buat Mutasi Baru */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setModalProductSearch('');
+          setOpenRowDropdownIdx(null);
+          setRowSearchQuery('');
+        }}
         title="Buat Surat Jalan Mutasi Cabang Baru"
         description="Pengajuan mutasi stok dari Gudang Pusat ke Cabang Toko Kendal (memerlukan approval Super Admin)."
-        maxWidth="lg"
+        maxWidth="2xl"
       >
         <form onSubmit={handleCreateTransfer} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -679,57 +690,241 @@ export default function TransfersPage() {
             </div>
           </div>
 
+          {/* Cari & Tambah Cepat Produk Mutasi */}
+          <div className="space-y-1.5 pt-2 border-t border-slate-800">
+            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <Search className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Cari &amp; Tambah Cepat Barang Mutasi:</span>
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Ketik nama parfum, botol, pelarut, atau kode SKU (contoh: Baccarat, Botol 30, BBK-0016)..."
+                value={modalProductSearch}
+                onChange={(e) => setModalProductSearch(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 bg-[#090D16] border border-slate-700 focus:border-[#D4AF37] rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-[#D4AF37]/40"
+              />
+              {modalProductSearch && (
+                <button
+                  type="button"
+                  onClick={() => setModalProductSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white"
+                  aria-label="Hapus pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {modalProductSearch.trim() && (() => {
+              const q = modalProductSearch.trim().toLowerCase();
+              const matches = products
+                .filter(
+                  (p) =>
+                    p.name.toLowerCase().includes(q) ||
+                    p.sku.toLowerCase().includes(q) ||
+                    (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+                    (p.scent_type && p.scent_type.toLowerCase().includes(q))
+                )
+                .slice(0, 10);
+
+              return (
+                <div className="rounded-xl border border-slate-700 bg-[#0B1120] shadow-2xl max-h-48 overflow-y-auto divide-y divide-slate-800/80">
+                  {matches.length === 0 ? (
+                    <div className="p-3 text-xs text-slate-400 text-center">
+                      Produk &ldquo;{modalProductSearch}&rdquo; tidak ditemukan.
+                    </div>
+                  ) : (
+                    matches.map((p) => {
+                      const alreadyAdded = transferItems.some((it) => it.product_id === p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => {
+                            setTransferItems((prev) => {
+                              const idx = prev.findIndex((it) => it.product_id === p.id);
+                              if (idx !== -1) {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], quantity: (Number(next[idx].quantity) || 0) + 10 };
+                                return next;
+                              }
+                              return [...prev, { product_id: p.id, quantity: 10 }];
+                            });
+                            setModalProductSearch('');
+                          }}
+                          className="w-full px-3 py-2 flex items-center justify-between gap-2 text-left hover:bg-slate-800/70 transition-colors"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-white truncate">
+                              <span className="font-mono text-[#D4AF37] mr-1.5">[{p.sku}]</span>
+                              {p.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              {p.scent_type || 'Produk'} • Satuan: {formatProductUnit(p)}
+                            </div>
+                          </div>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 ${
+                              alreadyAdded
+                                ? 'bg-emerald-950/70 text-emerald-300 border border-emerald-700/60'
+                                : 'bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40'
+                            }`}
+                          >
+                            {alreadyAdded ? '+10 Qty' : '+ Tambah'}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Daftar Barang Dikirim */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
+          <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-white">Item Bahan / Bibit yang Dimutasi</label>
+              <label className="text-xs font-semibold text-white">
+                Item Bahan / Bibit yang Dimutasi ({transferItems.length} item)
+              </label>
               <Button type="button" variant="ghost" size="sm" onClick={addItemRow} className="text-[#D4AF37]">
                 + Tambah Baris
               </Button>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {transferItems.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2 bg-[#162036]/60 p-2 rounded-lg border border-slate-800">
-                  <div className="flex-1">
-                    <select
-                      value={item.product_id}
-                      onChange={(e) => updateItemRow(idx, 'product_id', e.target.value)}
-                      className="w-full bg-[#0F172A] border border-[#1E293B] rounded px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                      required
-                    >
-                      {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.sku}) [{p.unit_name || 'ml'}]
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {transferItems.map((item, idx) => {
+                const selectedProd = products.find((p) => p.id === item.product_id);
+                const isRowOpen = openRowDropdownIdx === idx;
+                const rowMatches = isRowOpen
+                  ? products
+                      .filter((p) => {
+                        const q = rowSearchQuery.trim().toLowerCase();
+                        if (!q) return true;
+                        return (
+                          p.name.toLowerCase().includes(q) ||
+                          p.sku.toLowerCase().includes(q) ||
+                          (p.barcode && p.barcode.toLowerCase().includes(q))
+                        );
+                      })
+                      .slice(0, 30)
+                  : [];
 
-                  <div className="w-28">
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
-                      placeholder="Qty"
-                      required
-                    />
-                  </div>
+                return (
+                  <div key={idx} className="bg-[#162036]/60 p-2.5 rounded-lg border border-slate-800 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isRowOpen) {
+                              setOpenRowDropdownIdx(null);
+                              setRowSearchQuery('');
+                            } else {
+                              setOpenRowDropdownIdx(idx);
+                              setRowSearchQuery('');
+                            }
+                          }}
+                          className={`w-full bg-[#0F172A] border rounded-lg px-2.5 py-2 text-xs text-white flex items-center justify-between gap-2 text-left transition-colors ${
+                            isRowOpen ? 'border-[#D4AF37]' : 'border-[#1E293B] hover:border-slate-600'
+                          }`}
+                        >
+                          <span className="truncate">
+                            {selectedProd
+                              ? `${selectedProd.name} (${selectedProd.sku}) [${formatProductUnit(selectedProd)}]`
+                              : 'Pilih produk...'}
+                          </span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
+                              isRowOpen ? 'rotate-180 text-[#D4AF37]' : ''
+                            }`}
+                          />
+                        </button>
+                      </div>
 
-                  {transferItems.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItemRow(idx)}
-                      className="text-rose-400 hover:text-rose-300 p-1"
-                    >
-                      &times;
-                    </Button>
-                  )}
-                </div>
-              ))}
+                      <div className="w-24">
+                        <Input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
+                          placeholder="Qty"
+                          required
+                        />
+                      </div>
+
+                      <span className="text-[11px] text-slate-400 w-7 shrink-0">
+                        {formatProductUnit(selectedProd)}
+                      </span>
+
+                      {transferItems.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            removeItemRow(idx);
+                            if (openRowDropdownIdx === idx) setOpenRowDropdownIdx(null);
+                          }}
+                          className="text-rose-400 hover:text-rose-300 p-1"
+                        >
+                          &times;
+                        </Button>
+                      )}
+                    </div>
+
+                    {isRowOpen && (
+                      <div className="p-2 rounded-lg bg-[#090D16] border border-slate-700 space-y-1.5">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            type="text"
+                            autoFocus
+                            placeholder="Cari nama produk / SKU..."
+                            value={rowSearchQuery}
+                            onChange={(e) => setRowSearchQuery(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 bg-[#0F172A] border border-slate-700 focus:border-[#D4AF37] rounded-md text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                          />
+                        </div>
+                        <div className="max-h-40 overflow-y-auto divide-y divide-slate-800/70">
+                          {rowMatches.length === 0 ? (
+                            <div className="py-2 text-center text-[11px] text-slate-400">
+                              Tidak ada produk yang cocok.
+                            </div>
+                          ) : (
+                            rowMatches.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  updateItemRow(idx, 'product_id', p.id);
+                                  setOpenRowDropdownIdx(null);
+                                  setRowSearchQuery('');
+                                }}
+                                className={`w-full px-2.5 py-1.5 text-left text-xs flex items-center justify-between gap-2 transition-colors ${
+                                  p.id === item.product_id
+                                    ? 'bg-[#D4AF37]/15 text-[#D4AF37] font-semibold'
+                                    : 'text-slate-200 hover:bg-slate-800'
+                                }`}
+                              >
+                                <span className="truncate">
+                                  <span className="font-mono text-[#D4AF37] mr-1">[{p.sku}]</span>
+                                  {p.name}
+                                </span>
+                                <span className="text-[10px] text-slate-400 shrink-0">
+                                  [{formatProductUnit(p)}]
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
