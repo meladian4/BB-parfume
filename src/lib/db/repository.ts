@@ -1433,6 +1433,7 @@ export const repository = {
       updated_at: new Date().toISOString(),
     };
     globalState.products[index] = updated;
+    globalState.saveToFile();
 
     return {
       ...updated,

@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Info,
   Wand2,
+  Pencil,
 } from 'lucide-react';
 
 export default function ProductsPage() {
@@ -57,6 +58,20 @@ export default function ProductsPage() {
   const [initialCost, setInitialCost] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit Modal State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editSku, setEditSku] = useState('');
+  const [editBarcode, setEditBarcode] = useState('');
+  const [editProductType, setEditProductType] = useState<ProductType>('BIBIT');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editUnitName, setEditUnitName] = useState('ml');
+  const [editBasePrice, setEditBasePrice] = useState('');
+  const [editMinStockAlert, setEditMinStockAlert] = useState('0');
+  const [editError, setEditError] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     loadData();
@@ -164,6 +179,73 @@ export default function ProductsPage() {
     }
   };
 
+  const openEditModal = (p: Product) => {
+    setEditingProduct(p);
+    setEditName(p.name || '');
+    setEditSku(p.sku || '');
+    setEditBarcode(p.barcode || '');
+    setEditProductType(p.product_type || 'BIBIT');
+    setEditCategoryId(p.category_id || '');
+    setEditUnitName(p.unit_name || formatProductUnit(p));
+    setEditBasePrice(String(p.base_price ?? 0));
+    setEditMinStockAlert(String(p.min_stock_alert ?? 0));
+    setEditError('');
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    setEditSubmitting(true);
+    setEditError('');
+
+    try {
+      if (!editName.trim()) {
+        throw new Error('Nama produk wajib diisi.');
+      }
+      const cleanPrice = editBasePrice.replace(/[^0-9]/g, '');
+      const priceNum = cleanPrice !== '' ? Number(cleanPrice) : 0;
+      const minStockNum = editMinStockAlert.trim() !== '' ? Number(editMinStockAlert) : 0;
+
+      if (isNaN(priceNum) || priceNum < 0) {
+        throw new Error('Harga jual harus berupa angka 0 atau lebih.');
+      }
+      if (isNaN(minStockNum) || minStockNum < 0) {
+        throw new Error('Minimum stok harus berupa angka 0 atau lebih.');
+      }
+
+      const res = await fetch(`/api/products/${editingProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName.trim(),
+          sku: editSku.trim().toUpperCase(),
+          barcode: editBarcode.trim() || null,
+          product_type: editProductType,
+          category_id: editCategoryId || null,
+          unit_name: editUnitName.trim() || (editProductType === 'BIBIT' || editProductType === 'PELARUT' ? 'ml' : 'pcs'),
+          base_price: priceNum,
+          min_stock_alert: minStockNum,
+          is_blendable: editProductType === 'BIBIT' || editProductType === 'PELARUT',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Gagal menyimpan perubahan produk.');
+      }
+
+      const updatedName = data.data?.name || editName.trim();
+      setEditingProduct(null);
+      setSuccessMsg(`Produk "${updatedName}" berhasil diperbarui (Harga Jual: ${formatIDR(priceNum)}).`);
+      setTimeout(() => setSuccessMsg(''), 4500);
+      await loadData();
+    } catch (err: unknown) {
+      setEditError(err instanceof Error ? err.message : 'Gagal memperbarui produk.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const generateRandomSku = () => {
     const prefix =
       productType === 'BIBIT'
@@ -234,6 +316,13 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-6">
+      {successMsg && (
+        <div className="p-3.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs font-medium flex items-center gap-2 shadow-lg">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{successMsg}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -449,14 +538,25 @@ export default function ProductsPage() {
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteProduct(p)}
-                          className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors inline-flex items-center"
-                          title="Hapus Produk"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(p)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#E5C365] bg-[#D4AF37]/10 border border-[#D4AF37]/30 hover:bg-[#D4AF37]/20 transition-colors inline-flex items-center gap-1"
+                            title="Edit Produk & Harga Jual"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProduct(p)}
+                            className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 transition-colors inline-flex items-center"
+                            title="Hapus Produk"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -704,6 +804,150 @@ export default function ProductsPage() {
             </Button>
             <Button type="submit" variant="primary" isLoading={submitting}>
               Simpan Data Produk
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Edit Product & Harga Jual */}
+      <Modal
+        isOpen={Boolean(editingProduct)}
+        onClose={() => setEditingProduct(null)}
+        title="Edit Produk & Harga Jual"
+        description="Ubah nama produk, harga jual per satuan, jenis/kategori, atau batas minimum stok. Perubahan langsung tersimpan permanen ke server."
+        maxWidth="xl"
+      >
+        <form onSubmit={handleUpdateProduct} className="space-y-4">
+          {/* Pilihan Jenis Item */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-200">
+              Jenis / Tipe Item Stok
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(
+                [
+                  { type: 'BIBIT', label: 'Bibit Parfum', sub: 'ml', activeCls: 'bg-[#D4AF37]/15 border-[#D4AF37] text-white' },
+                  { type: 'PELARUT', label: 'Pelarut / Lux', sub: 'ml', activeCls: 'bg-blue-500/15 border-blue-400 text-white' },
+                  { type: 'BOTOL', label: 'Botol Kosong', sub: 'pcs', activeCls: 'bg-purple-500/15 border-purple-400 text-white' },
+                  { type: 'READY_TO_WEAR', label: 'Parfum Jadi', sub: 'pcs', activeCls: 'bg-emerald-500/15 border-emerald-400 text-white' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.type}
+                  type="button"
+                  onClick={() => {
+                    setEditProductType(opt.type);
+                    setEditUnitName(opt.sub);
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    editProductType === opt.type
+                      ? `${opt.activeCls} shadow-sm`
+                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="font-bold text-xs">{opt.label}</div>
+                  <div className="text-[10px] text-slate-400">Satuan: {opt.sub}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Nama Produk *"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Contoh: Alpha x / botol Hermes 55ml"
+              required
+            />
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-slate-300">
+                Kategori Produk
+              </label>
+              <select
+                value={editCategoryId}
+                onChange={(e) => setEditCategoryId(e.target.value)}
+                className="w-full h-10 bg-[#0F172A] border border-[#1E293B] rounded-lg px-3 text-xs text-slate-100 focus:outline-none focus:border-[#D4AF37]"
+              >
+                <option value="">-- Pilih Kategori --</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Harga Jual (Highlight Utama) */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#D4AF37]/10 to-slate-900/90 border border-[#D4AF37]/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-[#E5C365]">
+                Harga Jual per {editUnitName || 'unit'} (IDR) *
+              </label>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {formatIDR(Number(editBasePrice.replace(/[^0-9]/g, '')) || 0)} /{editUnitName || 'unit'}
+              </span>
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={editBasePrice}
+              onChange={(e) => setEditBasePrice(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="Contoh: 1800 atau 3500 atau 9000"
+              className="w-full h-11 bg-[#070A11] border border-[#D4AF37]/50 rounded-lg px-3 text-base font-mono font-bold text-white focus:outline-none focus:border-[#E5C365]"
+            />
+            <p className="text-[11px] text-slate-400">
+              Ketik angka tanpa titik/koma (contoh: <span className="font-mono text-slate-200">1800</span> untuk Rp 1.800, <span className="font-mono text-slate-200">3500</span> untuk seri PS, <span className="font-mono text-slate-200">9000</span> untuk botol 55ml).
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Input
+              label="Kode SKU"
+              value={editSku}
+              onChange={(e) => setEditSku(e.target.value)}
+              placeholder="BBK-0001"
+            />
+            <Input
+              label="Barcode (Opsional)"
+              value={editBarcode}
+              onChange={(e) => setEditBarcode(e.target.value)}
+              placeholder="Opsional"
+            />
+            <Input
+              label="Satuan"
+              value={editUnitName}
+              onChange={(e) => setEditUnitName(e.target.value)}
+              placeholder="ml / pcs"
+            />
+            <Input
+              label="Min. Stok Alert"
+              type="text"
+              inputMode="numeric"
+              value={editMinStockAlert}
+              onChange={(e) => setEditMinStockAlert(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="50 / 5"
+            />
+          </div>
+
+          {editError && (
+            <div className="text-xs text-rose-400 bg-rose-950/40 p-2.5 rounded-lg border border-rose-800/50">
+              {editError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setEditingProduct(null)}
+              disabled={editSubmitting}
+            >
+              Batal
+            </Button>
+            <Button type="submit" variant="primary" isLoading={editSubmitting}>
+              Simpan Perubahan
             </Button>
           </div>
         </form>
