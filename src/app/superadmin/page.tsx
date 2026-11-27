@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Store, Product, UserProfile, FinancialReportSummary, StoreTransactionSummary } from '@/types/domain';
+import { Store, Product, UserProfile, FinancialReportSummary, StoreTransactionSummary, CashDeposit } from '@/types/domain';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -31,6 +31,7 @@ import {
   RefreshCw,
   ExternalLink,
   Search,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function SuperAdminDashboard() {
@@ -39,6 +40,7 @@ export default function SuperAdminDashboard() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [report, setReport] = useState<FinancialReportSummary | null>(null);
   const [storeSummaries, setStoreSummaries] = useState<StoreTransactionSummary[]>([]);
+  const [deposits, setDeposits] = useState<CashDeposit[]>([]);
   const [pendingTransfersCount, setPendingTransfersCount] = useState<number>(0);
   const [pendingPurchasesCount, setPendingPurchasesCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ export default function SuperAdminDashboard() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [sRes, pRes, uRes, repRes, trRes, poRes, stSumRes] = await Promise.all([
+      const [sRes, pRes, uRes, repRes, trRes, poRes, stSumRes, depRes] = await Promise.all([
         fetch('/api/stores').then((r) => r.json()),
         fetch('/api/products').then((r) => r.json()),
         fetch('/api/users').then((r) => r.json()),
@@ -62,12 +64,14 @@ export default function SuperAdminDashboard() {
         fetch('/api/transfers').then((r) => r.json()),
         fetch('/api/purchases').then((r) => r.json()).catch(() => ({})),
         fetch('/api/reports/stores').then((r) => r.json()).catch(() => ({})),
+        fetch('/api/pos/deposits').then((r) => r.json()).catch(() => ({})),
       ]);
       setStores(sRes?.stores || sRes?.data || []);
       setProducts(pRes?.products || pRes?.data || []);
       setUsers(uRes?.users || uRes?.data || []);
       setReport(repRes?.report || null);
       setStoreSummaries(stSumRes?.summaries || []);
+      setDeposits(Array.isArray(depRes?.deposits) ? depRes.deposits : []);
 
       const trList = trRes?.data || trRes?.transfers || [];
       const pendingTr = Array.isArray(trList)
@@ -130,7 +134,9 @@ export default function SuperAdminDashboard() {
   };
 
   const retailStores = stores.filter((s) => s.type === 'STORE');
-  const warehouse = stores.find((s) => s.type === 'WAREHOUSE');
+  const approvedDeposits = deposits.filter((d) => d.status === 'APPROVED');
+  const pendingDepositsCount = deposits.filter((d) => d.status === 'PENDING').length;
+  const totalApprovedDeposits = approvedDeposits.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -300,63 +306,57 @@ export default function SuperAdminDashboard() {
         </Card>
       </div>
 
-      {/* Master Data Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card bordered className="bg-[#0F172A]/90 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Cabang Retail Kendal</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <StoreIcon className="w-4 h-4" />
+      {/* Setoran Kas & Katalog Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link href="/superadmin/deposits" className="block group">
+          <Card bordered className="bg-[#0F172A]/90 p-5 border-emerald-500/35 hover:border-emerald-400/60 transition h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-300 font-semibold flex items-center gap-2">
+                <span>Total Setoran Berhasil Diterima</span>
+                {pendingDepositsCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    {pendingDepositsCount} Menunggu
+                  </span>
+                )}
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{retailStores.length}</span>
-            <span className="text-xs text-emerald-400">Toko Aktif</span>
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">Kendal Kota, Pegandon, Kaliwungu</div>
-        </Card>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-emerald-400 font-mono">
+                {formatIDR(totalApprovedDeposits)}
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
+              <span>{approvedDeposits.length} setoran telah masuk ke kas utama</span>
+              <span className="text-emerald-400 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 font-medium">
+                Lihat Setoran <ArrowRight className="w-3 h-3" />
+              </span>
+            </div>
+          </Card>
+        </Link>
 
-        <Card bordered className="bg-[#0F172A]/90 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Gudang Distribusi</span>
-            <div className="w-8 h-8 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] flex items-center justify-center">
-              <Boxes className="w-4 h-4" />
+        <Link href="/superadmin/products" className="block group">
+          <Card bordered className="bg-[#0F172A]/90 p-5 hover:border-blue-400/50 transition h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400 font-medium">Katalog Parfum Resmi</span>
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <Package className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{warehouse ? '1' : '0'}</span>
-            <span className="text-xs text-[#E5C365]">Pusat Kendal</span>
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">{warehouse?.code || 'WH-KENDAL-01'}</div>
-        </Card>
-
-        <Card bordered className="bg-[#0F172A]/90 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Katalog Parfum Resmi</span>
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
-              <Package className="w-4 h-4" />
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-white">{products.length}</span>
+              <span className="text-xs text-blue-400">SKU Unik</span>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{products.length}</span>
-            <span className="text-xs text-blue-400">SKU Unik</span>
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">Extrait & EDP 30/50/100ml</div>
-        </Card>
-
-        <Card bordered className="bg-[#0F172A]/90 p-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Pengguna & Petugas</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
-              <Users className="w-4 h-4" />
+            <div className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+              <span>Bibit Parfum, Botol &amp; Booster Lux</span>
+              <span className="text-blue-400 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 font-medium">
+                Kelola Produk <ArrowRight className="w-3 h-3" />
+              </span>
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-white">{users.length}</span>
-            <span className="text-xs text-purple-400">Akun Terdaftar</span>
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">Super Admin, Logistik, Kasir</div>
-        </Card>
+          </Card>
+        </Link>
       </div>
 
       {/* 3 Branches Status Breakdown (Rangkuman Setiap Toko Sesuai Jenis Transaksi & Kategori - Layar 1) */}
