@@ -4119,6 +4119,114 @@ export const repository = {
     };
   },
 
+  async getSuperAdminPendingNotifications(): Promise<{
+    counts: {
+      pending_deposits: number;
+      pending_transfers: number;
+      pending_purchases: number;
+      pending_voids: number;
+      total: number;
+    };
+    items: Array<{
+      id: string;
+      type: 'DEPOSIT' | 'TRANSFER' | 'PURCHASE' | 'VOID';
+      title: string;
+      subtitle: string;
+      href: string;
+      created_at: string;
+    }>;
+  }> {
+    const pendingDeposits = (globalState.cashDeposits || []).filter(
+      (d) => d.status === 'PENDING'
+    );
+    const pendingTransfers = (globalState.stockTransfers || []).filter(
+      (t) => t.status === 'PENDING_APPROVAL' || t.status === 'RETURN_REQUESTED'
+    );
+    const pendingPurchases = (globalState.purchases || []).filter(
+      (p) => p.status === 'PENDING_APPROVAL'
+    );
+    const pendingVoids = (globalState.sales || []).filter(
+      (s) => s.sale_status === 'VOID_PENDING'
+    );
+
+    const items: Array<{
+      id: string;
+      type: 'DEPOSIT' | 'TRANSFER' | 'PURCHASE' | 'VOID';
+      title: string;
+      subtitle: string;
+      href: string;
+      created_at: string;
+    }> = [];
+
+    for (const d of pendingDeposits) {
+      items.push({
+        id: d.id,
+        type: 'DEPOSIT',
+        title: `Setor Kas: ${d.store_name || 'Cabang'}`,
+        subtitle: `Rp ${(d.amount || 0).toLocaleString('id-ID')} • ${d.cashier_name || 'Kasir'}`,
+        href: '/superadmin/deposits',
+        created_at: d.created_at,
+      });
+    }
+
+    for (const t of pendingTransfers) {
+      const destStore = globalState.stores.find((s) => s.id === t.destination_store_id);
+      const isReturn = t.status === 'RETURN_REQUESTED';
+      items.push({
+        id: t.id,
+        type: 'TRANSFER',
+        title: isReturn
+          ? `Retur Mutasi: ${t.transfer_number}`
+          : `Approval Mutasi: ${t.transfer_number}`,
+        subtitle: `${destStore?.name || 'Cabang'} • ${isReturn ? 'Ditolak kasir, perlu keputusan' : 'Menunggu persetujuan'}`,
+        href: '/superadmin/transfers',
+        created_at: t.created_at,
+      });
+    }
+
+    for (const p of pendingPurchases) {
+      items.push({
+        id: p.id,
+        type: 'PURCHASE',
+        title: `Acuan Belanja: ${p.po_number}`,
+        subtitle: `Estimasi Rp ${(p.total_amount || 0).toLocaleString('id-ID')}`,
+        href: '/superadmin/purchases',
+        created_at: p.created_at,
+      });
+    }
+
+    for (const s of pendingVoids) {
+      const st = globalState.stores.find((x) => x.id === s.store_id);
+      items.push({
+        id: s.id,
+        type: 'VOID',
+        title: `Pengajuan Batal: ${s.invoice_number}`,
+        subtitle: `${st?.name || 'Cabang'} • Rp ${(s.final_amount || 0).toLocaleString('id-ID')}`,
+        href: '/cashier/history',
+        created_at: s.updated_at || s.created_at,
+      });
+    }
+
+    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const counts = {
+      pending_deposits: pendingDeposits.length,
+      pending_transfers: pendingTransfers.length,
+      pending_purchases: pendingPurchases.length,
+      pending_voids: pendingVoids.length,
+      total:
+        pendingDeposits.length +
+        pendingTransfers.length +
+        pendingPurchases.length +
+        pendingVoids.length,
+    };
+
+    return {
+      counts,
+      items: items.slice(0, 12),
+    };
+  },
+
   async getCentralExpensesSummary(): Promise<{ total: number; count: number }> {
     const centralList = (globalState.expenses || []).filter((e) => isCentralExpense(e));
     const total = centralList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);

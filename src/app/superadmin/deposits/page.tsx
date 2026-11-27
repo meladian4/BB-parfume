@@ -103,6 +103,7 @@ export default function SuperAdminDepositsPage() {
       if (!res.ok) throw new Error(data.error);
 
       alert(`Setoran kas cabang ${deposit.store_name} berhasil disetujui! Saldo kas pusat telah diperbarui.`);
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Gagal menyetujui setoran kas.');
@@ -133,6 +134,7 @@ export default function SuperAdminDepositsPage() {
 
       alert(`Setoran kas berhasil ditolak. Sisa cash toko tidak terpotong.`);
       setIsRejectModalOpen(false);
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: any) {
       alert(err.message || 'Gagal menolak setoran kas.');
