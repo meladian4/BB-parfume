@@ -42,11 +42,15 @@ export async function GET(
 
     const summary = summaries[0];
 
-    const storeExpenses = await db.getExpenses({
+    const rawStoreExpenses = await db.getExpenses({
       store_id: storeId,
       startDate,
       endDate,
     });
+    // Di laporan PDF harian cabang, tampilkan beban operasional cabang (bukan OPEX pusat Super Admin)
+    const storeExpenses = rawStoreExpenses.filter(
+      (e) => e.funding_source !== 'CENTRAL' && e.created_by_user?.role !== 'SUPER_ADMIN'
+    );
     const totalExpenses = storeExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
     let shiftSummary: Record<string, any> | undefined;

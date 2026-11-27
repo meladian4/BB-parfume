@@ -37,6 +37,8 @@ export default function SuperAdminDepositsPage() {
   const [selectedDepositToReject, setSelectedDepositToReject] = useState<CashDeposit | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [centralExpensesTotal, setCentralExpensesTotal] = useState<number>(0);
+  const [centralExpensesCount, setCentralExpensesCount] = useState<number>(0);
 
   const loadData = async () => {
     try {
@@ -48,6 +50,8 @@ export default function SuperAdminDepositsPage() {
 
       if (depRes.success) {
         setDeposits(depRes.deposits || []);
+        setCentralExpensesTotal(Number(depRes.central_expenses_total) || 0);
+        setCentralExpensesCount(Number(depRes.central_expenses_count) || 0);
       }
 
       const stList: Store[] = (storeRes.stores || storeRes.data || []).filter(
@@ -146,6 +150,7 @@ export default function SuperAdminDepositsPage() {
   const approvedList = deposits.filter((d) => d.status === 'APPROVED');
   const totalPendingRp = pendingList.reduce((sum, d) => sum + d.amount, 0);
   const totalApprovedRp = approvedList.reduce((sum, d) => sum + d.amount, 0);
+  const netApprovedRp = totalApprovedRp - centralExpensesTotal;
 
   return (
     <div className="space-y-6">
@@ -230,11 +235,22 @@ export default function SuperAdminDepositsPage() {
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-2xl font-black text-emerald-400 mt-2">
-              {formatIDR(totalApprovedRp)}
+            <p
+              className={`text-2xl font-black mt-2 ${
+                netApprovedRp < 0 ? 'text-rose-400' : 'text-emerald-400'
+              }`}
+            >
+              {formatIDR(netApprovedRp)}
             </p>
             <p className="text-[11px] text-slate-400 mt-1">
-              {approvedList.length} setoran telah masuk ke kas utama
+              {centralExpensesTotal > 0 ? (
+                <>
+                  Setoran Masuk: <strong className="text-slate-200">{formatIDR(totalApprovedRp)}</strong> • OPEX Pusat:{' '}
+                  <strong className="text-rose-400">-{formatIDR(centralExpensesTotal)}</strong> ({centralExpensesCount})
+                </>
+              ) : (
+                <>{approvedList.length} setoran telah masuk ke kas utama</>
+              )}
             </p>
           </CardContent>
         </Card>

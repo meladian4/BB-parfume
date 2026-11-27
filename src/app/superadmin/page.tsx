@@ -41,6 +41,8 @@ export default function SuperAdminDashboard() {
   const [report, setReport] = useState<FinancialReportSummary | null>(null);
   const [storeSummaries, setStoreSummaries] = useState<StoreTransactionSummary[]>([]);
   const [deposits, setDeposits] = useState<CashDeposit[]>([]);
+  const [centralExpensesTotal, setCentralExpensesTotal] = useState<number>(0);
+  const [centralExpensesCount, setCentralExpensesCount] = useState<number>(0);
   const [pendingTransfersCount, setPendingTransfersCount] = useState<number>(0);
   const [pendingPurchasesCount, setPendingPurchasesCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
@@ -72,6 +74,8 @@ export default function SuperAdminDashboard() {
       setReport(repRes?.report || null);
       setStoreSummaries(stSumRes?.summaries || []);
       setDeposits(Array.isArray(depRes?.deposits) ? depRes.deposits : []);
+      setCentralExpensesTotal(Number(depRes?.central_expenses_total) || 0);
+      setCentralExpensesCount(Number(depRes?.central_expenses_count) || 0);
 
       const trList = trRes?.data || trRes?.transfers || [];
       const pendingTr = Array.isArray(trList)
@@ -137,6 +141,7 @@ export default function SuperAdminDashboard() {
   const approvedDeposits = deposits.filter((d) => d.status === 'APPROVED');
   const pendingDepositsCount = deposits.filter((d) => d.status === 'PENDING').length;
   const totalApprovedDeposits = approvedDeposits.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  const netApprovedDeposits = totalApprovedDeposits - centralExpensesTotal;
 
   return (
     <div className="space-y-6">
@@ -324,12 +329,25 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-2xl font-black text-emerald-400 font-mono">
-                {formatIDR(totalApprovedDeposits)}
+              <span
+                className={`text-2xl font-black font-mono ${
+                  netApprovedDeposits < 0 ? 'text-rose-400' : 'text-emerald-400'
+                }`}
+              >
+                {formatIDR(netApprovedDeposits)}
               </span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-1 flex items-center justify-between">
-              <span>{approvedDeposits.length} setoran telah masuk ke kas utama</span>
+            <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap items-center justify-between gap-2">
+              <span>
+                {centralExpensesTotal > 0 ? (
+                  <>
+                    Bruto Setoran <strong className="text-slate-200">{formatIDR(totalApprovedDeposits)}</strong> • OPEX Pusat{' '}
+                    <strong className="text-rose-400">-{formatIDR(centralExpensesTotal)}</strong> ({centralExpensesCount})
+                  </>
+                ) : (
+                  <>{approvedDeposits.length} setoran telah masuk ke kas utama</>
+                )}
+              </span>
               <span className="text-emerald-400 group-hover:translate-x-0.5 transition inline-flex items-center gap-1 font-medium">
                 Lihat Setoran <ArrowRight className="w-3 h-3" />
               </span>

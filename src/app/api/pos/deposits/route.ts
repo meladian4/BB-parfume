@@ -26,10 +26,17 @@ export async function GET(request: NextRequest) {
       availableCash = await db.getStoreAvailableCash(targetStoreId);
     }
 
+    const centralExp =
+      authUser.role === 'SUPER_ADMIN'
+        ? await db.getCentralExpensesSummary()
+        : { total: 0, count: 0 };
+
     return NextResponse.json({
       success: true,
       deposits,
       available_cash: availableCash,
+      central_expenses_total: centralExp.total,
+      central_expenses_count: centralExp.count,
     });
   } catch (error: any) {
     if (error instanceof AuthorizationError || error instanceof StoreAccessError) {

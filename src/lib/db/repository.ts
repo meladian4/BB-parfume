@@ -910,6 +910,20 @@ if (!Array.isArray(globalState.cashDeposits)) {
   globalState.cashDeposits = [];
 }
 
+// Helper: deteksi apakah biaya operasional dibayar oleh Super Admin (Pusat/Setoran)
+// atau oleh Kasir Cabang (Laci Toko)
+function isCentralExpense(e: Expense): boolean {
+  if (e.funding_source === 'CENTRAL') return true;
+  if (e.funding_source === 'STORE') return false;
+  if (!e.created_by) return false;
+  const profile = globalState.profiles.find(
+    (p) => p.id === e.created_by || p.full_name === e.created_by
+  );
+  if (profile) return profile.role === 'SUPER_ADMIN';
+  const low = e.created_by.toLowerCase();
+  return low.includes('super admin') || low.includes('owner');
+}
+
 export const repository = {
   // STORES
   async getStores(): Promise<Store[]> {
@@ -2547,6 +2561,7 @@ export const repository = {
       .filter(
         (e) =>
           e.store_id === session.store_id &&
+          !isCentralExpense(e) &&
           new Date(e.created_at || e.expense_date).getTime() >= openTime
       )
       .reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -2691,10 +2706,11 @@ export const repository = {
     );
     const totalDeposited = depositsDuringShift.reduce((sum, d) => sum + (d.amount || 0), 0);
 
-    // Pengeluaran operasional toko selama shift berlangsung
+    // Pengeluaran operasional cabang (kasir) selama shift berlangsung (tidak termasuk OPEX pusat Super Admin)
     const expensesDuringShift = (globalState.expenses || []).filter(
       (e) =>
         e.store_id === session.store_id &&
+        !isCentralExpense(e) &&
         new Date(e.created_at || e.expense_date).getTime() >= openTime
     );
     const totalExpenses = expensesDuringShift.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -2788,10 +2804,11 @@ export const repository = {
       );
       const totalDeposited = depositsDuringShift.reduce((sum, d) => sum + (d.amount || 0), 0);
 
-      // Kurangi transaksi nominal pengeluaran (beban operasional) toko sejak shift ini dibuka
+      // Kurangi transaksi nominal pengeluaran (beban operasional cabang kasir) toko sejak shift ini dibuka
       const expensesDuringShift = (globalState.expenses || []).filter(
         (e) =>
           e.store_id === storeId &&
+          !isCentralExpense(e) &&
           new Date(e.created_at || e.expense_date).getTime() >= openTime
       );
       const totalExpenses = expensesDuringShift.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -2818,7 +2835,7 @@ export const repository = {
         .filter((d) => d.store_id === storeId && d.status === 'APPROVED')
         .reduce((sum, d) => sum + (d.amount || 0), 0);
       const totalExpenses = (globalState.expenses || [])
-        .filter((e) => e.store_id === storeId)
+        .filter((e) => e.store_id === storeId && !isCentralExpense(e))
         .reduce((sum, e) => sum + (e.amount || 0), 0);
       return Math.max(0, cashPaymentsTotal - totalDeposited - totalExpenses);
     }
@@ -2836,10 +2853,11 @@ export const repository = {
     );
     const totalDeposited = depositsAfterClose.reduce((sum, d) => sum + (d.amount || 0), 0);
 
-    // Kurangi transaksi nominal pengeluaran (beban operasional) toko setelah shift terakhir ditutup
+    // Kurangi transaksi nominal pengeluaran (beban operasional cabang kasir) toko setelah shift terakhir ditutup
     const expensesAfterClose = (globalState.expenses || []).filter(
       (e) =>
         e.store_id === storeId &&
+        !isCentralExpense(e) &&
         new Date(e.created_at || e.expense_date).getTime() >= lastClosedTime
     );
     const totalExpenses = expensesAfterClose.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -4024,6 +4042,7 @@ export const repository = {
     description: string;
     amount: number;
     receipt_url?: string | null;
+    funding_source?: 'CENTRAL' | 'STORE';
     created_by?: string | null;
   }): Promise<Expense> {
     const store = globalState.stores.find((st) => st.id === data.store_id);
@@ -4040,14 +4059,38 @@ export const repository = {
       throw new Error('Deskripsi pengeluaran operasional wajib diisi.');
     }
 
+    const creatorProfile = data.created_by
+      ? globalState.profiles.find((p) => p.id === data.created_by || p.full_name === data.created_by)
+      : undefined;
+
+    const fundingSource: 'CENTRAL' | 'STORE' =
+      data.funding_source ||
+      (creatorProfile?.role === 'SUPER_ADMIN' ? 'CENTRAL' : 'STORE');
+
+    const expId = `exp-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+    // Jika diinput oleh Super Admin (CENTRAL), otomatis potong Kas Utama Perusahaan
+    // dan memotong saldo Total Setoran Berhasil Diterima (TIDAK memotong laci kasir cabang)
+    if (fundingSource === 'CENTRAL') {
+      await this.recordCompanyWalletTransaction({
+        transaction_type: 'OPERATIONAL_EXPENSE',
+        amount: -amount,
+        category: data.category,
+        reference_id: expId,
+        description: `Biaya Operasional Pusat (${store.name}): ${data.description.trim()}`,
+        operator: creatorProfile?.full_name || 'Super Admin Utama',
+      });
+    }
+
     const newExpense: Expense = {
-      id: `exp-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      id: expId,
       store_id: data.store_id,
       expense_date: data.expense_date || new Date().toISOString().slice(0, 10),
       category: data.category,
       description: data.description.trim(),
       amount: amount,
       receipt_url: data.receipt_url || null,
+      funding_source: fundingSource,
       created_by: data.created_by || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -4064,6 +4107,7 @@ export const repository = {
         category: newExpense.category,
         amount: newExpense.amount,
         description: newExpense.description,
+        funding_source: fundingSource,
       },
     });
 
@@ -4075,6 +4119,12 @@ export const repository = {
     };
   },
 
+  async getCentralExpensesSummary(): Promise<{ total: number; count: number }> {
+    const centralList = (globalState.expenses || []).filter((e) => isCentralExpense(e));
+    const total = centralList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    return { total, count: centralList.length };
+  },
+
   async deleteExpense(id: string): Promise<boolean> {
     const index = globalState.expenses.findIndex((e) => e.id === id);
     if (index === -1) {
@@ -4083,6 +4133,18 @@ export const repository = {
 
     const removed = globalState.expenses[index];
     globalState.expenses.splice(index, 1);
+
+    // Jika biaya pusat dihapus, kembalikan saldo Kas Utama Perusahaan
+    if (isCentralExpense(removed) && removed.amount > 0) {
+      await this.recordCompanyWalletTransaction({
+        transaction_type: 'ADJUSTMENT',
+        amount: removed.amount,
+        category: removed.category,
+        reference_id: removed.id,
+        description: `Pengembalian Saldo (Hapus Biaya Operasional Pusat): ${removed.description}`,
+        operator: 'Super Admin Utama',
+      });
+    }
 
     await this.createAuditLog({
       action: 'EXPENSE_DELETED',

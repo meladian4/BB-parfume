@@ -445,6 +445,7 @@ export interface Expense {
   description: string;
   amount: number;
   receipt_url?: string | null;
+  funding_source?: 'CENTRAL' | 'STORE';
   created_by?: string | null;
   created_at: string;
   updated_at: string;

@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
       description,
       amount: numAmount,
       receipt_url: receipt_url || null,
+      funding_source: authUser.role === 'SUPER_ADMIN' ? 'CENTRAL' : 'STORE',
       created_by: created_by || authUser.id,
     });
 
