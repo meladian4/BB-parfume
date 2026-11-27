@@ -92,6 +92,7 @@ export default function SuperAdminTransfersApprovalPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyetujui mutasi.');
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Gagal menyetujui mutasi.');
@@ -126,6 +127,7 @@ export default function SuperAdminTransfersApprovalPage() {
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menolak mutasi.');
 
       setIsRejectModalOpen(false);
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Gagal menolak mutasi.');
@@ -154,6 +156,7 @@ export default function SuperAdminTransfersApprovalPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menerima mutasi.');
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Gagal menerima mutasi.');
@@ -183,6 +186,7 @@ export default function SuperAdminTransfersApprovalPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal menyetujui retur barang ke gudang.');
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Gagal menyetujui retur barang ke gudang.');
@@ -212,6 +216,7 @@ export default function SuperAdminTransfersApprovalPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Gagal mengembalikan status kiriman ke kasir.');
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Gagal mengembalikan status kiriman ke kasir.');

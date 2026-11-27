@@ -242,6 +242,7 @@ export default function SuperAdminPurchasesPage() {
         `Sukses! Permintaan ${selectedPurchaseToApprove.po_number} disetujui & ${editableItems.length} item langsung masuk ke stok Gudang Pusat sesuai realisasi belanja.`
       );
       setTimeout(() => setToastMessage(null), 5000);
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Gagal memproses persetujuan.');
@@ -277,6 +278,7 @@ export default function SuperAdminPurchasesPage() {
       setIsRejectModalOpen(false);
       setToastMessage(`Permintaan ${selectedPurchaseToReject.po_number} telah ditolak.`);
       setTimeout(() => setToastMessage(null), 5000);
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Gagal menolak permintaan.');

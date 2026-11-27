@@ -79,7 +79,7 @@ export default function SuperAdminDashboard() {
 
       const trList = trRes?.data || trRes?.transfers || [];
       const pendingTr = Array.isArray(trList)
-        ? trList.filter((t: any) => t.status === 'PENDING_APPROVAL' || t.status === 'PENDING_SHIPMENT').length
+        ? trList.filter((t: any) => t.status === 'PENDING_APPROVAL' || t.status === 'RETURN_REQUESTED').length
         : 0;
       setPendingTransfersCount(pendingTr);
 

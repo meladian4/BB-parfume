@@ -362,6 +362,7 @@ export default function CashierHistoryPage() {
       });
       setSaleToReview(null);
       setAdminDecisionNotes('');
+      window.dispatchEvent(new Event('bb-notifications-refresh'));
       await loadData();
     } catch (err: any) {
       alert(err.message);
