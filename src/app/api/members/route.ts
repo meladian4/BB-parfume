@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/repository';
-import { authenticateAndRequireRole, AuthorizationError } from '@/lib/auth/guards';
+import {
+  authenticateAndRequireRole,
+  requireOpenShiftForCashier,
+  AuthorizationError,
+  StoreAccessError,
+  ShiftClosedError,
+} from '@/lib/auth/guards';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,8 +17,15 @@ export async function GET(request: NextRequest) {
     const members = await db.getMembers(search);
     return NextResponse.json({ members });
   } catch (error: any) {
-    if (error instanceof AuthorizationError) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
+    if (
+      error instanceof AuthorizationError ||
+      error instanceof StoreAccessError ||
+      error instanceof ShiftClosedError
+    ) {
+      return NextResponse.json(
+        { error: error.message, shift_required: error instanceof ShiftClosedError },
+        { status: 403 }
+      );
     }
     return NextResponse.json({ error: error.message || 'Gagal memuat data member.' }, { status: 500 });
   }
@@ -20,7 +33,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await authenticateAndRequireRole(['CASHIER', 'SUPER_ADMIN']);
+    const authUser = await authenticateAndRequireRole(['CASHIER', 'SUPER_ADMIN']);
+    await requireOpenShiftForCashier(authUser);
     const body = await request.json();
     const { name, phone, email, tier, member_code, registered_by } = body;
 
@@ -42,8 +56,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, member }, { status: 201 });
   } catch (error: any) {
-    if (error instanceof AuthorizationError) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
+    if (
+      error instanceof AuthorizationError ||
+      error instanceof StoreAccessError ||
+      error instanceof ShiftClosedError
+    ) {
+      return NextResponse.json(
+        { error: error.message, shift_required: error instanceof ShiftClosedError },
+        { status: 403 }
+      );
     }
     return NextResponse.json({ error: error.message || 'Gagal mendaftarkan member.' }, { status: 400 });
   }

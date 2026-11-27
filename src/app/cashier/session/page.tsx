@@ -147,6 +147,7 @@ export default function CashierSessionPage() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
       setJustClosedSession(null);
+      window.dispatchEvent(new Event('bb-shift-changed'));
       await loadData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Gagal membuka shift kasir.');
@@ -181,6 +182,7 @@ export default function CashierSessionPage() {
       const targetStoreId = closedSession?.store_id || session.store_id || storeId;
       setJustClosedSession(closedSession);
       setClosingNotes('');
+      window.dispatchEvent(new Event('bb-shift-changed'));
 
       if (targetStoreId && closedSession) {
         const autoDownloadUrl = buildDailyPdfUrl(targetStoreId, closedSession, true);

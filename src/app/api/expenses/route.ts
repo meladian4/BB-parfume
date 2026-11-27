@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/repository';
-import { authenticateAndRequireRole, AuthorizationError } from '@/lib/auth/guards';
+import {
+  authenticateAndRequireRole,
+  requireOpenShiftForCashier,
+  AuthorizationError,
+  StoreAccessError,
+  ShiftClosedError,
+} from '@/lib/auth/guards';
 import { ExpenseCategory } from '@/types/domain';
 
 export async function GET(request: NextRequest) {
@@ -30,8 +36,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, expenses });
   } catch (error: any) {
-    if (error instanceof AuthorizationError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 403 });
+    if (
+      error instanceof AuthorizationError ||
+      error instanceof StoreAccessError ||
+      error instanceof ShiftClosedError
+    ) {
+      return NextResponse.json(
+        { success: false, error: error.message, shift_required: error instanceof ShiftClosedError },
+        { status: 403 }
+      );
     }
     return NextResponse.json(
       { success: false, error: error.message || 'Gagal memuat data pengeluaran.' },
@@ -55,6 +68,7 @@ export async function POST(request: NextRequest) {
         );
       }
       store_id = authUser.assigned_store_id;
+      await requireOpenShiftForCashier(authUser, store_id);
     }
 
     if (!store_id || !expense_date || !category || !description || amount === undefined) {
@@ -84,8 +98,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, expense }, { status: 201 });
   } catch (error: any) {
-    if (error instanceof AuthorizationError) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 403 });
+    if (
+      error instanceof AuthorizationError ||
+      error instanceof StoreAccessError ||
+      error instanceof ShiftClosedError
+    ) {
+      return NextResponse.json(
+        { success: false, error: error.message, shift_required: error instanceof ShiftClosedError },
+        { status: 403 }
+      );
     }
     return NextResponse.json(
       { success: false, error: error.message || 'Gagal mencatat pengeluaran operasional.' },

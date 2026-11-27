@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/repository';
-import { authenticateAndRequireRole, resolveEffectiveStoreId, AuthorizationError, StoreAccessError } from '@/lib/auth/guards';
+import {
+  authenticateAndRequireRole,
+  resolveEffectiveStoreId,
+  requireOpenShiftForCashier,
+  AuthorizationError,
+  StoreAccessError,
+  ShiftClosedError,
+} from '@/lib/auth/guards';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,6 +45,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Safeguard Shift: Kasir wajib membuka shift sebelum melakukan transaksi POS
+    const activeShift = await requireOpenShiftForCashier(authUser, effectiveStoreId);
+
     // Safeguard Operasional: Pastikan POS tidak sedang terkunci akibat pengajuan setor kas atau void pending
     const lockStatus = await db.checkStorePosLockStatus(effectiveStoreId);
     if (lockStatus.is_locked) {
@@ -54,7 +64,7 @@ export async function POST(request: NextRequest) {
     const sale = await db.processSaleCheckout({
       store_id: effectiveStoreId, // Kunci ke cabang resmi user kasir
       cashier_id: authUser.id,
-      cash_session_id: cash_session_id || undefined,
+      cash_session_id: activeShift?.id || cash_session_id || undefined,
       member_id: member_id || undefined,
       idempotency_key: idempotency_key.trim(),
       items,
@@ -69,8 +79,15 @@ export async function POST(request: NextRequest) {
       sale,
     }, { status: 201 });
   } catch (error: any) {
-    if (error instanceof AuthorizationError || error instanceof StoreAccessError) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
+    if (
+      error instanceof AuthorizationError ||
+      error instanceof StoreAccessError ||
+      error instanceof ShiftClosedError
+    ) {
+      return NextResponse.json(
+        { error: error.message, shift_required: error instanceof ShiftClosedError },
+        { status: 403 }
+      );
     }
     return NextResponse.json(
       { error: error.message || 'Gagal memproses transaksi checkout POS.' },

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db/repository';
-import { authenticateAndRequireRole, resolveEffectiveStoreId, AuthorizationError, StoreAccessError } from '@/lib/auth/guards';
+import {
+  authenticateAndRequireRole,
+  resolveEffectiveStoreId,
+  requireOpenShiftForCashier,
+  AuthorizationError,
+  StoreAccessError,
+  ShiftClosedError,
+} from '@/lib/auth/guards';
 
 export async function POST(
   request: NextRequest,
@@ -32,6 +39,7 @@ export async function POST(
     }
 
     if (action === 'REQUEST_VOID') {
+      await requireOpenShiftForCashier(authUser, existingSale.store_id);
       if (!reason || !reason.trim()) {
         return NextResponse.json(
           { error: 'Alasan pembatalan (void) transaksi wajib diisi.' },
@@ -81,8 +89,15 @@ export async function POST(
 
     return NextResponse.json({ error: 'Aksi pembatalan tidak valid.' }, { status: 400 });
   } catch (error: any) {
-    if (error instanceof AuthorizationError || error instanceof StoreAccessError) {
-      return NextResponse.json({ error: error.message }, { status: 403 });
+    if (
+      error instanceof AuthorizationError ||
+      error instanceof StoreAccessError ||
+      error instanceof ShiftClosedError
+    ) {
+      return NextResponse.json(
+        { error: error.message, shift_required: error instanceof ShiftClosedError },
+        { status: 403 }
+      );
     }
     return NextResponse.json({ error: error.message || 'Gagal memproses pembatalan transaksi.' }, { status: 500 });
   }

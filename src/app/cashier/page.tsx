@@ -690,6 +690,7 @@ export default function CashierPOSPage() {
         if (!res.ok) throw new Error(data.error);
         setSession(data.session);
         setIsSessionModalOpen(false);
+        window.dispatchEvent(new Event('bb-shift-changed'));
       } else {
         if (!session) return;
         const res = await fetch('/api/pos/session', {
@@ -706,6 +707,7 @@ export default function CashierPOSPage() {
         if (!res.ok) throw new Error(data.error);
         setSession(null);
         setIsSessionModalOpen(false);
+        window.dispatchEvent(new Event('bb-shift-changed'));
         alert('Sesi kasir berhasil ditutup dan kas telah direkonsiliasi.');
       }
     } catch (err: any) {

@@ -23,6 +23,15 @@ export class StoreAccessError extends Error {
   }
 }
 
+export class ShiftClosedError extends Error {
+  constructor(
+    message: string = 'SHIFT BELUM DIBUKA: Kasir wajib membuka shift terlebih dahulu di menu Shift Kasir (Kas) sebelum melakukan transaksi. Saat shift tertutup, kasir hanya dapat melakukan Setor Kas ke Pusat.'
+  ) {
+    super(message);
+    this.name = 'ShiftClosedError';
+  }
+}
+
 /**
  * Validasi apakah user memiliki salah satu dari role yang diizinkan
  */
@@ -167,5 +176,32 @@ export async function authenticateAndRequireRole(
     explicitUser ||
     (await getSessionUser(allowedRoles.includes('CASHIER') ? 'CASHIER' : allowedRoles[0]));
   return requireRole(user, allowedRoles);
+}
+
+/**
+ * Validasi wajib buka shift khusus role CASHIER sebelum melakukan transaksi apapun
+ * (kecuali Setor Kas ke Pusat dan Buka/Tutup Shift).
+ * Role SUPER_ADMIN dan LOGISTICS tidak dibatasi oleh shift kasir.
+ */
+export async function requireOpenShiftForCashier(
+  authUser: UserProfile,
+  storeId?: string | null
+) {
+  if (authUser.role !== 'CASHIER') {
+    return null;
+  }
+
+  const effectiveStoreId = storeId || authUser.assigned_store_id;
+  if (!effectiveStoreId) {
+    throw new StoreAccessError('Kasir belum ditugaskan ke cabang toko manapun.');
+  }
+
+  const { repository } = await import('@/lib/db/repository');
+  const activeSession = await repository.getCurrentCashSession(effectiveStoreId, authUser.id);
+  if (!activeSession || activeSession.status !== 'OPEN') {
+    throw new ShiftClosedError();
+  }
+
+  return activeSession;
 }
 
