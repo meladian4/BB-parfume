@@ -69,6 +69,13 @@ export async function POST(request: NextRequest) {
       }
       store_id = authUser.assigned_store_id;
       await requireOpenShiftForCashier(authUser, store_id);
+    } else if (authUser.role === 'SUPER_ADMIN') {
+      // Biaya operasional yang diinput Super Admin selalu tercatat ke Pusat (bukan ke cabang toko)
+      const allStores = await db.getStores();
+      const centralStore = allStores.find((s) => s.type === 'WAREHOUSE');
+      if (centralStore) {
+        store_id = centralStore.id;
+      }
     }
 
     if (!store_id || !expense_date || !category || !description || amount === undefined) {

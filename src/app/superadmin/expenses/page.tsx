@@ -61,8 +61,9 @@ export default function SuperAdminExpensesPage() {
       const sRes = await fetch('/api/stores').then((r) => r.json());
       const storeList: Store[] = sRes.stores || [];
       setStores(storeList);
-      if (storeList.length > 0 && !formStoreId) {
-        setFormStoreId(storeList[0].id);
+      const centralStore = storeList.find((s) => s.type === 'WAREHOUSE') || storeList[0];
+      if (centralStore) {
+        setFormStoreId(centralStore.id);
       }
 
       await fetchExpenses();
@@ -515,7 +516,7 @@ export default function SuperAdminExpensesPage() {
         <Modal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          title="Catat Pengeluaran Operasional Toko"
+          title="Catat Pengeluaran Operasional Pusat"
         >
           <form onSubmit={handleCreateExpense} className="space-y-4">
             {formError && (
@@ -527,20 +528,24 @@ export default function SuperAdminExpensesPage() {
 
             <div>
               <label className="block text-xs font-medium text-neutral-300 mb-1">
-                Lokasi Cabang / Toko <span className="text-red-400">*</span>
+                Sumber Dana / Lokasi Pencatatan <span className="text-red-400">*</span>
               </label>
-              <select
-                value={formStoreId}
-                onChange={(e) => setFormStoreId(e.target.value)}
-                required
-                className="w-full bg-[#181C24] border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-100 focus:outline-none focus:border-[#D4AF37]"
-              >
-                {stores.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.name} ({st.code})
-                  </option>
-                ))}
-              </select>
+              <div className="p-3 rounded-lg bg-[#181C24] border border-[#D4AF37]/40 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-bold text-[#E5C365] flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-[#D4AF37]" />
+                    <span>
+                      Pusat ({(stores.find((s) => s.type === 'WAREHOUSE') || stores[0])?.name || 'Gudang Pusat Distribusi Kendal'})
+                    </span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-[#D4AF37]/15 text-[#E5C365] border border-[#D4AF37]/30 text-[10px] font-bold">
+                    KAS PUSAT
+                  </span>
+                </div>
+                <p className="text-[11px] text-neutral-400">
+                  Pengeluaran Super Admin otomatis memotong <strong>Total Setoran Berhasil Diterima</strong> &amp; <strong>Kas Utama Perusahaan</strong> (tidak terhubung ke laci kas cabang).
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
