@@ -95,7 +95,7 @@ export default function CashierSessionPage() {
       }
       if (sessRes.session) {
         setSession(sessRes.session);
-        setActualCashInput(String(sessRes.session.expected_cash || ''));
+        setActualCashInput(String(sessRes.session.expected_cash ?? 0));
       } else {
         setSession(null);
         if (typeof sessRes.available_cash === 'number') {
@@ -338,25 +338,44 @@ export default function CashierSessionPage() {
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 my-6">
                     <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
                       <span className="text-xs text-slate-400">Modal Kas Awal</span>
-                      <p className="text-lg font-bold text-white mt-1">
+                      <p className="text-lg font-bold text-white mt-1 font-mono">
                         {formatIDR(session.opening_cash)}
                       </p>
                     </div>
 
                     <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
                       <span className="text-xs text-slate-400">Penjualan Tunai Shift Ini</span>
-                      <p className="text-lg font-bold text-emerald-400 mt-1">
-                        {formatIDR(session.total_sales_cash)}
+                      <p className="text-lg font-bold text-emerald-400 mt-1 font-mono">
+                        + {formatIDR(session.total_sales_cash)}
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-xl bg-slate-900/80 border border-[#D4AF37]/30 bg-gradient-to-br from-slate-900 to-[#1e1910]">
-                      <span className="text-xs text-[#D4AF37]">Saldo Kas Sistem (Expected)</span>
-                      <p className="text-lg font-bold text-[#E5C365] mt-1">
+                    <div className="p-4 rounded-xl bg-slate-900/80 border border-rose-500/30">
+                      <span className="text-xs text-rose-300">Beban Operasional Shift Ini</span>
+                      <p className="text-lg font-bold text-rose-400 mt-1 font-mono">
+                        - {formatIDR(session.total_expenses || 0)}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-900/80 border border-sky-500/30">
+                      <span className="text-xs text-sky-300">Setoran Kas Disetujui</span>
+                      <p className="text-lg font-bold text-sky-400 mt-1 font-mono">
+                        - {formatIDR(session.total_deposits || 0)}
+                      </p>
+                    </div>
+
+                    <div className="sm:col-span-2 p-4 rounded-xl bg-slate-900/80 border border-[#D4AF37]/40 bg-gradient-to-br from-slate-900 to-[#1e1910]">
+                      <span className="text-xs text-[#D4AF37] font-semibold">
+                        Saldo Kas Sistem (Expected) Real-Time
+                      </span>
+                      <p className="text-xl font-black text-[#E5C365] mt-1 font-mono">
                         {formatIDR(session.expected_cash)}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        Rumus: Modal Awal + Penjualan Tunai - Beban Operasional - Setoran Disetujui
                       </p>
                     </div>
                   </div>

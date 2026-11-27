@@ -2530,8 +2530,37 @@ export const repository = {
       (s) => s.store_id === storeId && s.cashier_id === cashierId && s.status === 'OPEN'
     );
     if (!session) return null;
+
+    const openTime = new Date(session.opened_at).getTime();
+
+    // Hitung real-time setoran kas APPROVED dan beban operasional selama shift berlangsung
+    const totalDeposits = (globalState.cashDeposits || [])
+      .filter(
+        (d) =>
+          d.store_id === session.store_id &&
+          d.status === 'APPROVED' &&
+          new Date(d.created_at).getTime() >= openTime
+      )
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+
+    const totalExpenses = (globalState.expenses || [])
+      .filter(
+        (e) =>
+          e.store_id === session.store_id &&
+          new Date(e.created_at || e.expense_date).getTime() >= openTime
+      )
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    const liveExpectedCash = Math.max(
+      0,
+      (session.opening_cash || 0) + (session.total_sales_cash || 0) - totalDeposits - totalExpenses
+    );
+
     return {
       ...session,
+      expected_cash: liveExpectedCash,
+      total_expenses: totalExpenses,
+      total_deposits: totalDeposits,
       store: globalState.stores.find((st) => st.id === session.store_id),
       cashier: globalState.profiles.find((p) => p.id === session.cashier_id),
     };
