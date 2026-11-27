@@ -1185,7 +1185,7 @@ export default function CashierPOSPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-[10px] text-slate-400">
-                              {p.product_type === 'BIBIT' || p.product_type === 'PELARUT' ? 'Per ml' : `${p.size_ml} ml`}
+                              {unit === 'ml' ? 'Per ml' : 'Per pcs'}
                             </p>
                             <p className="text-sm font-bold text-[#D4AF37]">
                               {formatIDR(p.base_price)}

@@ -110,19 +110,20 @@ export default function CashierInventoryPage() {
     const name = (prod?.name || '').toLowerCase();
     const unit = formatProductUnit(prod);
 
+    if (pType === 'PELARUT' || name.startsWith('lux ') || name === 'lux' || name.includes('absolut') || name.includes('alkohol') || name.includes('pelarut')) {
+      return 'PELARUT';
+    }
     if (pType === 'BOTOL' || pType === 'READY_TO_WEAR' || unit === 'pcs' || name.includes('botol')) {
       return 'BOTOL';
-    }
-    if (pType === 'PELARUT' || name.includes('absolut') || name.includes('alkohol') || name.includes('pelarut')) {
-      return 'PELARUT';
     }
     return 'BIBIT';
   };
 
   const getWarningThreshold = (prod?: any): number => {
     const group = getProductCategoryGroup(prod);
-    if (group === 'BOTOL') return 5; // 5 pcs untuk botol
-    return 50; // 50 ml untuk bibit & pelarut
+    const unit = formatProductUnit(prod);
+    if (group === 'BOTOL' || unit === 'pcs') return 5; // 5 pcs untuk botol & Lux (pcs)
+    return 50; // 50 ml untuk bibit
   };
 
   const getStockCondition = (item: InventoryBalance): 'EMPTY' | 'LOW' | 'SAFE' => {

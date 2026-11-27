@@ -4931,8 +4931,8 @@ export const repository = {
           sales_set: new Set(),
         },
         PELARUT: {
-          label: '💧 Pelarut / Absolute',
-          unit: 'ml',
+          label: '💧 Booster Lux / Pelarut',
+          unit: 'pcs',
           total_quantity: 0,
           total_amount: 0,
           sales_set: new Set(),

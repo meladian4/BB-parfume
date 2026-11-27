@@ -573,9 +573,16 @@ def build_pdf(data, output_path):
             item_parts = []
             for it in items[:3]:
                 prod = it.get("product") or {}
-                p_name = escape(str(prod.get("name", "Item")))
+                p_name_raw = str(prod.get("name", "Item"))
+                p_name = escape(p_name_raw)
                 p_type = str(prod.get("product_type", "")).upper()
-                unit = "ml" if p_type in ("BIBIT", "PELARUT") else (prod.get("unit_name") or "pcs")
+                explicit_unit = str(prod.get("unit_name") or "").strip().lower()
+                if p_name_raw.strip().lower().startswith("lux") or explicit_unit == "pcs":
+                    unit = "pcs"
+                elif p_type in ("BIBIT", "PELARUT"):
+                    unit = "ml"
+                else:
+                    unit = prod.get("unit_name") or "pcs"
                 item_parts.append(f"{p_name} ({it.get('quantity', 1)} {escape(str(unit))})")
             item_desc = ", ".join(item_parts) if item_parts else "-"
             if len(items) > 3:
