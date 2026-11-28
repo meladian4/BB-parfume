@@ -150,10 +150,10 @@ export default function SuperAdminEvaluationPage() {
     }
     if (preset === 'SAME_DAY_MOM') {
       return {
-        title: `Tgl ${wib.day} Ini vs Tgl ${wib.prevSameDayNum} Lalu`,
-        primaryStart: wib.todayStr,
+        title: `Tgl 1-${wib.day} Ini vs 1-${wib.prevSameDayNum} Lalu`,
+        primaryStart: wib.monthStart,
         primaryEnd: wib.todayStr,
-        compareStart: wib.prevSameDay,
+        compareStart: wib.prevMonthStart,
         compareEnd: wib.prevSameDay,
       };
     }
@@ -319,7 +319,7 @@ export default function SuperAdminEvaluationPage() {
               { id: 'MONTH_VS_PREV', label: 'Bulan Ini vs Akhir Bulan Lalu' },
               {
                 id: 'SAME_DAY_MOM',
-                label: `Tgl ${wib.day} Ini vs Tgl ${wib.prevSameDayNum} Lalu`,
+                label: `Tgl 1-${wib.day} Ini vs 1-${wib.prevSameDayNum} Lalu`,
               },
               { id: 'TODAY_VS_PREV_END', label: 'Hari Ini vs Akhir Bulan Kemarin' },
               { id: 'CUSTOM', label: 'Custom Tanggal' },
