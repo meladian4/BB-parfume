@@ -4375,6 +4375,126 @@ export const repository = {
     };
   },
 
+  async getEvaluationReport(options: {
+    primaryStart: string;
+    primaryEnd: string;
+    compareStart: string;
+    compareEnd: string;
+  }) {
+    const toWibDateKey = (isoStr?: string | null) => {
+      if (!isoStr) return '';
+      if (isoStr.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(isoStr)) return isoStr;
+      try {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(
+          new Date(isoStr)
+        );
+      } catch {
+        return String(isoStr).slice(0, 10);
+      }
+    };
+
+    const calcGrowth = (primary: number, compare: number) => {
+      const diff = primary - compare;
+      let pct = 0;
+      if (compare === 0) {
+        pct = primary > 0 ? 100 : primary < 0 ? -100 : 0;
+      } else {
+        pct = Math.round(((primary - compare) / Math.abs(compare)) * 1000) / 10;
+      }
+      const status: 'TUMBUH' | 'MINUS' | 'STABIL' =
+        pct > 0 ? 'TUMBUH' : pct < 0 ? 'MINUS' : 'STABIL';
+      return { primary, compare, diff, pct, status };
+    };
+
+    const completedSales = globalState.sales.filter((s) => s.sale_status === 'COMPLETED');
+    const retailStores = globalState.stores.filter((st) => st.type === 'STORE');
+
+    const aggregatePeriod = (storeId: string, start: string, end: string) => {
+      const periodSales = completedSales.filter((s) => {
+        if (s.store_id !== storeId) return false;
+        const d = toWibDateKey(s.created_at);
+        return d >= start && d <= end;
+      });
+      const periodExpenses = (globalState.expenses || []).filter((e) => {
+        if (e.store_id !== storeId || isCentralExpense(e)) return false;
+        const d = toWibDateKey(e.expense_date || e.created_at);
+        return d >= start && d <= end;
+      });
+
+      const netSales = periodSales.reduce((sum, s) => sum + (Number(s.final_amount) || 0), 0);
+      const cogs = periodSales.reduce((sum, s) => sum + (Number(s.total_cost) || 0), 0);
+      const grossProfit = netSales - cogs;
+      const expenses = periodExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const netProfit = grossProfit - expenses;
+
+      return {
+        transactions: periodSales.length,
+        net_sales: netSales,
+        cogs,
+        gross_profit: grossProfit,
+        expenses,
+        net_profit: netProfit,
+      };
+    };
+
+    const branches = retailStores.map((st) => {
+      const p = aggregatePeriod(st.id, options.primaryStart, options.primaryEnd);
+      const c = aggregatePeriod(st.id, options.compareStart, options.compareEnd);
+      return {
+        store_id: st.id,
+        store_name: st.name,
+        store_code: st.code,
+        transactions: calcGrowth(p.transactions, c.transactions),
+        net_sales: calcGrowth(p.net_sales, c.net_sales),
+        gross_profit: calcGrowth(p.gross_profit, c.gross_profit),
+        expenses: calcGrowth(p.expenses, c.expenses),
+        net_profit: calcGrowth(p.net_profit, c.net_profit),
+      };
+    });
+
+    const sumMetric = (
+      getter: (b: (typeof branches)[number]) => { primary: number; compare: number }
+    ) => {
+      const pSum = branches.reduce((acc, b) => acc + getter(b).primary, 0);
+      const cSum = branches.reduce((acc, b) => acc + getter(b).compare, 0);
+      return calcGrowth(pSum, cSum);
+    };
+
+    const centralPrimary = (globalState.expenses || [])
+      .filter((e) => {
+        if (!isCentralExpense(e)) return false;
+        const d = toWibDateKey(e.expense_date || e.created_at);
+        return d >= options.primaryStart && d <= options.primaryEnd;
+      })
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    const centralCompare = (globalState.expenses || [])
+      .filter((e) => {
+        if (!isCentralExpense(e)) return false;
+        const d = toWibDateKey(e.expense_date || e.created_at);
+        return d >= options.compareStart && d <= options.compareEnd;
+      })
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    return {
+      periods: {
+        primary_start: options.primaryStart,
+        primary_end: options.primaryEnd,
+        compare_start: options.compareStart,
+        compare_end: options.compareEnd,
+      },
+      totals: {
+        transactions: sumMetric((b) => b.transactions),
+        net_sales: sumMetric((b) => b.net_sales),
+        gross_profit: sumMetric((b) => b.gross_profit),
+        expenses: sumMetric((b) => b.expenses),
+        net_profit: sumMetric((b) => b.net_profit),
+        central_expenses: calcGrowth(centralPrimary, centralCompare),
+      },
+      branches,
+    };
+  },
+
   /**
    * PERINGATAN STOK MENIPIS (LOW STOCK ALERTS)
    */

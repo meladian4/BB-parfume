@@ -21,6 +21,7 @@ import {
   Wallet,
   Banknote,
   X,
+  BarChart3,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { BBLogo } from '@/components/ui/BBLogo';
@@ -115,6 +116,7 @@ export function Sidebar({ role }: SidebarProps) {
       badgeKey: 'pending_voids',
     },
     { href: '/superadmin/reports', label: 'Laporan & Keuangan', icon: TrendingUp },
+    { href: '/superadmin/evaluasi', label: 'Evaluasi', icon: BarChart3 },
     { href: '/superadmin/expenses', label: 'Biaya Operasional', icon: DollarSign },
     { href: '/superadmin/audit-log', label: 'Audit Trail', icon: ScrollText },
     {
