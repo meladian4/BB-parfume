@@ -159,10 +159,10 @@ export default function SuperAdminEvaluationPage() {
     }
     if (preset === 'TODAY_VS_PREV_END') {
       return {
-        title: 'Hari Ini vs Akhir Bulan Kemarin',
+        title: 'Hari Ini vs Total Akhir Bulan Kemarin',
         primaryStart: wib.todayStr,
         primaryEnd: wib.todayStr,
-        compareStart: wib.prevMonthEnd,
+        compareStart: wib.prevMonthStart,
         compareEnd: wib.prevMonthEnd,
       };
     }
@@ -321,7 +321,7 @@ export default function SuperAdminEvaluationPage() {
                 id: 'SAME_DAY_MOM',
                 label: `Tgl 1-${wib.day} Ini vs 1-${wib.prevSameDayNum} Lalu`,
               },
-              { id: 'TODAY_VS_PREV_END', label: 'Hari Ini vs Akhir Bulan Kemarin' },
+              { id: 'TODAY_VS_PREV_END', label: 'Hari Ini vs Total Akhir Bulan Kemarin' },
               { id: 'CUSTOM', label: 'Custom Tanggal' },
             ] as { id: PresetMode; label: string }[]
           ).map((btn) => {
